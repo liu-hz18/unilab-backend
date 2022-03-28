@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"unilab-backend/apis"
+	"unilab-backend/database"
 	"unilab-backend/jwt"
 )
 
@@ -15,6 +16,7 @@ func JWTMiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var code int
 		var data interface{}
+		var claims jwt.Claims
 		code = apis.SUCCESS
 		token := c.Query("token")
 		if token == "" {
@@ -36,6 +38,19 @@ func JWTMiddleWare() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		// read database to get authorization role
+		user_type, err := database.GetUserType(claims.Userid)
+		if err != nil {
+			code = apis.ERROR
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code": code,
+				"msg": apis.MsgFlags[code],
+				"data": data,
+			})
+			c.Abort()
+			return
+		}
+		c.Set("user_type", user_type)
 		c.Next()
 	}
 }

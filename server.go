@@ -11,8 +11,6 @@ import (
 	"unilab-backend/middleware"
 )
 
-// NIfIDMtN?8In
-
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
@@ -29,7 +27,7 @@ func main() {
 	gin.SetMode(gin.DebugMode)
 	// gin.SetMode(gin.ReleaseMode)
 
-	// cross-source routes
+	// cross-origin routes
 	router.Use(middleware.Cors())
 
 
@@ -62,12 +60,22 @@ func main() {
 	// })
 
 	router.POST("/login", apis.UserLoginHandler)
-	userApis := router.Group("/user")
-	userApis.Use(middleware.JWTMiddleWare())
+	studentApis := router.Group("/student")
+	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
 	{
-		// userApis.POST("/login", )
+		
 	}
+	teacherApis := router.Group("/teacher")
+	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
+	{
+		
+	}
+	adminApis := router.Group("/admin")
+	adminApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserAdmin))
+	{
 
+	}
+	
 	router.Run(":1323")
 }
 

@@ -7,11 +7,12 @@ import (
 )
 
 type Claims struct {
-	userid   string `json:"userid"`
-	password string `json:"password"`
+	Userid   string `json:"userid"`
+	Password string `json:"password"`
 	jwt.StandardClaims
 }
 
+// 编解码私钥，在生产环境中，该私钥请使用生成器生成，并妥善保管，此处使用简单字符串
 var jwtSecret = []byte("hello unilab")
 
 func ParseToken(token string) (*Claims, error) {

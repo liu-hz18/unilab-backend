@@ -30,14 +30,16 @@ func UserLoginHandler(c *gin.Context) {
 	if err != nil { // code = INVALID_PARAMS
 		log.Println(err)
 	} else {
-		// 用于gitlab验证
+		// 加上gitlab验证 ?
 		existed := database.CheckUserExist(userid)
-		if existed {
+		username, err := database.GetUserName(userid)
+		if existed && err == nil {
 			token, err := jwt.TokenGenerator(userid, password)
 			if err != nil {
 				code = ERROR_AUTH_TOKEN
 			} else {
 				data["token"] = token
+				data["username"] = username
 				code = SUCCESS
 			}
 		} else {

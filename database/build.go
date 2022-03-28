@@ -204,16 +204,15 @@ func InitDB() {
 	log.Println("test db successfully created")
 }
 
-type user_type_t uint8
-
 const (
-	user_admin   user_type_t = 0
-	user_teacher user_type_t = 1
-	user_student user_type_t = 2
+	UserAdmin   uint8 = 2
+	UserTeacher uint8 = 1
+	UserStudent uint8 = 0
 )
 
 // just for test
 func PreinitDBTestData() {
+	// create user
 	_, err := db.Exec(`INSERT INTO oj_user
 		(user_id, user_name, user_real_name, user_email, user_git_tsinghua_id, user_last_login_time, user_type)
 		VALUES
@@ -225,7 +224,7 @@ func PreinitDBTestData() {
 		"admin@mails.tsinghua.edu.cn",
 		123456,
 		"1970-12-31 23:59:59",
-		user_admin,
+		UserAdmin,
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -243,7 +242,7 @@ func PreinitDBTestData() {
 			strconv.Itoa(i)+"@mails.tsinghua.edu.cn",
 			123456,
 			"1970-12-31 23:59:59",
-			user_student,
+			UserStudent,
 		)
 		if err != nil {
 			log.Fatal(err)
@@ -262,7 +261,7 @@ func PreinitDBTestData() {
 			strconv.Itoa(i)+"@mails.tsinghua.edu.cn",
 			123456,
 			"1970-12-31 23:59:59",
-			user_teacher,
+			UserTeacher,
 		)
 		if err != nil {
 			log.Fatal(err)
@@ -280,7 +279,6 @@ func drop_test_database() {
 	}
 }
 
-
 func CheckUserExist(userid string) bool {
 	var userid_db string
 	err := db.QueryRow("SELECT user_id from oj_user where user_id=?;", userid).Scan(&userid_db)
@@ -289,4 +287,16 @@ func CheckUserExist(userid string) bool {
 		return false
 	}
 	return true
+}
+
+func GetUserType(userid string) (uint8, error) {
+	var user_type_db uint8
+	err := db.QueryRow("SELECT user_type from oj_user where user_id=?;", userid).Scan(&user_type_db)
+	return user_type_db, err
+}
+
+func GetUserName(userid string) (string, error) {
+	var username string
+	err := db.QueryRow("SELECT user_name from oj_user where user_id=?;", userid).Scan(&username)
+	return username, err
 }

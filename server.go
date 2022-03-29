@@ -6,9 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"unilab-backend/apis"
-	"unilab-backend/database"
+	// "unilab-backend/apis"
+	// "unilab-backend/database"
 	"unilab-backend/middleware"
+	"unilab-backend/auth"
 )
 
 // NIfIDMtN?8In
@@ -17,8 +18,8 @@ import (
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	database.InitDB()
-	database.PreinitDBTestData()
+	// database.InitDB()
+	// database.PreinitDBTestData()
 
 
 	router := gin.Default()
@@ -61,7 +62,9 @@ func main() {
 	// 	c.String(http.StatusOK, fmt.Sprintf("%d files uploaded successfully with fields name=%s and id=%s.", len(files), name, id))
 	// })
 
-	router.POST("/login", apis.UserLoginHandler)
+	// router.POST("/login", apis.UserLoginHandler)
+	router.GET("/login",auth.HandleLogin)
+	router.GET("/callback",auth.HandleCallback)
 	userApis := router.Group("/user")
 	userApis.Use(middleware.JWTMiddleWare())
 	{

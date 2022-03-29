@@ -78,24 +78,28 @@ func Get_pipeline_jobs_info(project_id string,pipeline_id string)[]map[string]in
 	return jobs
 }
 
-func Get_job_trace(project_id string,job_id string){
+func Get_job_trace(project_id string,job_id string) string{
 	data := make(map[string]string)
+	fmt.Println("/projects/"+project_id+"/jobs/"+job_id+"/trace")
 	_,trace :=get("/projects/"+project_id+"/jobs/"+job_id+"/trace",data,auth.AccessToken)
-	fmt.Println(trace)
+	// fmt.Println(trace)
+	return string(trace)
 }
 
-func Get_project_traces(project_name string){
+func Get_project_traces(project_name string) string{
 	id,_,_:=Get_project_info(project_name)
 	// fmt.Println(id)
-	branches:=Get_branches(id)
+	// branches:=Get_branches(id)
 	// for _,branch :=range branches{
 	// 	fmt.Println(branch["name"])
 	// }
-	branch:=branches[1]["name"].(string)
-	pipelines:=Get_pipelines_info(id,branch)
+	// branch:=branches[1]["name"].(string)
+	// pipelines:=Get_pipelines_info(id,branch)
+	pipelines:=Get_pipelines_info(id,"ch7")
 	pipline:=strconv.Itoa(int(pipelines[0]["id"].(float64)))
 	jobs:=Get_pipeline_jobs_info(id,pipline)
 	job:=strconv.Itoa(int(jobs[0]["id"].(float64)))
 	fmt.Println(job)
-	Get_job_trace(id,job)
+	trace:=Get_job_trace(id,job)
+	return trace
 }

@@ -278,25 +278,3 @@ func drop_test_database() {
 		return
 	}
 }
-
-func CheckUserExist(userid string) bool {
-	var userid_db string
-	err := db.QueryRow("SELECT user_id from oj_user where user_id=?;", userid).Scan(&userid_db)
-	if err != nil {
-		log.Printf("get user failed, err: %v\n", err)
-		return false
-	}
-	return true
-}
-
-func GetUserType(userid string) (uint8, error) {
-	var user_type_db uint8
-	err := db.QueryRow("SELECT user_type from oj_user where user_id=?;", userid).Scan(&user_type_db)
-	return user_type_db, err
-}
-
-func GetUserName(userid string) (string, error) {
-	var username string
-	err := db.QueryRow("SELECT user_name from oj_user where user_id=?;", userid).Scan(&username)
-	return username, err
-}

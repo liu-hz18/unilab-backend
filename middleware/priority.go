@@ -17,7 +17,7 @@ func PriorityMiddleware(user_type_permission uint8) gin.HandlerFunc {
 		log.Printf("UserPriority: %d", user_type)
 		if user_type < user_type_permission {
 			code = apis.SUCCESS
-			c.JSON(http.StatusUnauthorized, gin.H{
+			c.JSON(http.StatusForbidden, gin.H{
 				"code": code,
 				"msg":  apis.MsgFlags[code],
 				"data": data,
@@ -28,4 +28,3 @@ func PriorityMiddleware(user_type_permission uint8) gin.HandlerFunc {
 		c.Next()
 	}
 }
-

@@ -35,47 +35,24 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello world")
 	})
-	// router.POST("/codeupload", func(c *gin.Context){
-	// 	// value
-	// 	name := c.PostForm("name")
-	// 	id := c.PostForm("id")
-	// 	// Multipart form
-	// 	form, err := c.MultipartForm()
-	// 	if err != nil {
-	// 		c.String(http.StatusBadRequest, "get form error: %s", err.Error())
-	// 		return
-	// 	}
-	// 	files := form.File["file"]
-	// 	os.MkdirAll(FILE_SAVE_ROOT_DIR + id + "/" + "prj1/", 777)
-	// 	for _, file := range files {
-	// 		filename := filepath.Base(file.Filename)
-	// 		log.Printf("receive file %s", filename)
-	// 		dst := FILE_SAVE_ROOT_DIR + id + "/" + "prj1/" + filename
-	// 		if err := c.SaveUploadedFile(file, dst); err != nil {
-	// 			c.String(http.StatusBadRequest, "save file error: %s", err.Error())
-	// 			return
-	// 		}
-	// 	}
-	// 	c.String(http.StatusOK, fmt.Sprintf("%d files uploaded successfully with fields name=%s and id=%s.", len(files), name, id))
-	// })
 
+	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.POST("/login", apis.UserLoginHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
 	{
-		
+		studentApis.GET("/fetch-my-course", apis.FetchUserCoursesHandler)
 	}
 	teacherApis := router.Group("/teacher")
 	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
 	{
-		
+		teacherApis.POST("/create-course", apis.CreateCourseHandler)
+		teacherApis.GET("/fetch-all-user", apis.GetAllUsersHandler)
 	}
 	adminApis := router.Group("/admin")
 	adminApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserAdmin))
 	{
 
 	}
-	
 	router.Run(":1323")
 }
-

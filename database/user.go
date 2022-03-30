@@ -5,6 +5,13 @@ import (
 	"log"
 )
 
+// user type
+const (
+	UserAdmin   uint8 = 2
+	UserTeacher uint8 = 1
+	UserStudent uint8 = 0
+)
+
 type UserInfo struct {
 	ID uint32 `json:"id"`
 	Name string `json:"name"`

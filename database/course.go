@@ -5,9 +5,16 @@ import (
 	"log"
 )
 
+const (
+	CourseTypeInvalid uint8 = 0
+	CourseTypeOJ      uint8 = 1
+	CourseTypeGitLab  uint8 = 2
+	CourseTypeSystem  uint8 = 3
+)
+
 type CreateCourseForm struct {
 	CourseName string   `json:"name" form:"name" uri:"name" binding:"required"`
-	CourseType string   `json:"type" form:"type" uri:"type" binding:"required"`
+	CourseType int      `json:"type" form:"type" uri:"type" binding:"required"`
 	Creator    string   `json:"creator" form:"creator" uri:"creator" binding:"required"`
 	Term       string   `json:"term" form:"term" uri:"term" binding:"required"`
 	Teachers   []uint32 `json:"teachers" form:"teachers" uri:"teachers" binding:"required"`
@@ -32,7 +39,7 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 		courseform.CourseName,
 		courseform.Creator,
 		courseform.Term,
-		courseform.CourseType,
+		uint8(courseform.CourseType),
 	)
 	if err != nil {
 		_ = tx.Rollback()
@@ -98,7 +105,7 @@ type Course struct {
 	CourseName    string
 	CourseTeacher string
 	CourseTerm    string
-	CourseType    string
+	CourseType    uint8
 }
 
 func GetUserCourses(userid uint32) ([]Course, error) {
@@ -138,7 +145,15 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 	courses := []Course{}
 	for _, course_id := range courseIDs {
 		var course Course
-		err := tx.QueryRow("SELECT course_id, course_name, course_teacher, course_term, course_type from oj_db_test.oj_course where course_id=?;", course_id).Scan(&course.CourseID, &course.CourseName, &course.CourseTeacher, &course.CourseTerm, &course.CourseType)
+		err := tx.QueryRow(
+			"SELECT course_id, course_name, course_teacher, course_term, course_type from oj_db_test.oj_course where course_id=?;",
+			course_id).Scan(
+				&course.CourseID,
+				&course.CourseName,
+				&course.CourseTeacher,
+				&course.CourseTerm,
+				&course.CourseType,
+		)
 		if err != nil {
 			_ = tx.Rollback()
 			log.Println(err)

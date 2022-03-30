@@ -66,7 +66,7 @@ func InitDB() {
 		course_name VARCHAR(32) NOT NULL,
 		course_teacher VARCHAR(32) NOT NULL,
 		course_term VARCHAR(64) NOT NULL,
-		course_type VARCHAR(32) NOT NULL
+		course_type TINYINT UNSIGNED NOT NULL
 	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
@@ -203,12 +203,6 @@ func InitDB() {
 	}
 	log.Println("test db successfully created")
 }
-
-const (
-	UserAdmin   uint8 = 2
-	UserTeacher uint8 = 1
-	UserStudent uint8 = 0
-)
 
 // just for test
 func PreinitDBTestData() {

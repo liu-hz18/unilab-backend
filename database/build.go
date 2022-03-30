@@ -11,7 +11,7 @@ import (
 var db *sql.DB
 
 func InitDB() {
-	_db, err := sql.Open("mysql", "root:123456@tcp(localhost:3306)/mysql?charset=utf8")
+	_db, err := sql.Open("mysql", "root:123456@tcp(localhost:3306)/mysql?charset=utf8&parseTime=true&loc=Local")
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -145,8 +145,9 @@ func InitDB() {
 	// create announcement table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_announcement(
 		announcement_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		announcement_path VARCHAR(255) NOT NULL,
+		announcement_title VARCHAR(255) NOT NULL,
 		course_id INT UNSIGNED NOT NULL,
+		issue_time DATETIME NOT NULL,
 		CONSTRAINT c_oj_announcement_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE
 	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
 	if err != nil {

@@ -10,6 +10,31 @@ import (
 )
 
 
+func GetCourseNameHandler(c *gin.Context) {
+	courseid_str := c.Query("courseid")
+	if courseid_str == "" {
+		ErrorResponse(c, ERROR, "there's not Course ID in query params.")
+		return
+	}
+	courseID, err := strconv.ParseUint(courseid_str, 10, 32)
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
+	courseName, err := database.GetCourseByID(uint32(courseID))
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
+	data := make(map[string]interface{})
+	data["result"] = courseName
+	c.JSON(http.StatusOK, gin.H{
+		"code": SUCCESS,
+		"msg":  MsgFlags[SUCCESS],
+		"data": data,
+	})
+}
+
 func CreateCourseHandler(c *gin.Context) {
 	var courseForm database.CreateCourseForm
 	data := make(map[string]interface{})

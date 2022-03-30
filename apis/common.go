@@ -1,6 +1,10 @@
 package apis
 
-const FILE_SAVE_ROOT_DIR = "../unilab-files/"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 const (
 	SUCCESS        = 200
@@ -70,4 +74,14 @@ var MsgFlags = map[int]string{
 	ERROR_UPLOAD_SAVE_IMAGE_FAIL:    "保存图片失败",
 	ERROR_UPLOAD_CHECK_IMAGE_FAIL:   "检查图片失败",
 	ERROR_UPLOAD_CHECK_IMAGE_FORMAT: "校验图片错误，图片格式或大小有问题",
+}
+
+func ErrorResponse(c *gin.Context, code int, msg string) {
+	data := make(map[string]interface{})
+	data["err"] = msg
+	c.JSON(http.StatusOK, gin.H{
+		"code": code,
+		"msg":  MsgFlags[code],
+		"data": data,
+	})
 }

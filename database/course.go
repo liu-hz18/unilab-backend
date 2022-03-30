@@ -119,12 +119,12 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 		return nil, err
 	}
 	courseIDs := []uint32{}
-	if !checkTableExists("oj_user_course") {
-		_ = tx.Rollback()
-		log.Println(err)
-		return nil, err
-	}
-	res, err := db.Query("SELECT course_id FROM oj_db_test.oj_user_course where user_id=?;", userid)
+	// if !checkTableExists("oj_user_course") {
+	// 	_ = tx.Rollback()
+	// 	log.Println(err)
+	// 	return nil, err
+	// }
+	res, err := tx.Query("SELECT course_id FROM oj_db_test.oj_user_course where user_id=?;", userid)
 	if err != nil {
 		_ = tx.Rollback()
 		log.Println(err)
@@ -164,4 +164,14 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 	_ = tx.Commit()
 	log.Printf("GetUserCourses() commit trans action successfully.")
 	return courses, nil
+}
+
+func GetCourseByID(courseID uint32) (string, error) {
+	var course_name string
+	err := db.QueryRow("SELECT course_name from oj_db_test.oj_course where course_id=?;", courseID).Scan(&course_name)
+	if err != nil {
+		log.Println(err)
+		return "", err
+	}
+	return course_name, nil
 }

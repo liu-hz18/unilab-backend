@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"unilab-backend/jwt"
 	"unilab-backend/apis"
-	"unilab-backend/database"
+	// "unilab-backend/database"
     "golang.org/x/oauth2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
@@ -88,19 +88,19 @@ func HandleCallback(c *gin.Context){
 	if err!=nil{
 		fmt.Println(err)
 	}else{
-		existed := database.CheckUserExist(user_name)
-		if existed {
-			rettoken, err := jwt.TokenGenerator(user_name, user_id)
-			if err != nil {
-				retcode = apis.ERROR_AUTH_TOKEN
-			} else {
-				retcode = apis.SUCCESS
-				query.Add("token",rettoken)
-				query.Add("username",user_name)
-			}
+		// existed := database.CheckUserExist(user_name)
+		// if existed {
+		rettoken, err := jwt.TokenGenerator(user_name, user_id)
+		if err != nil {
+			retcode = apis.ERROR_AUTH_TOKEN
 		} else {
-			retcode = apis.ERROR_AUTH
+			retcode = apis.SUCCESS
+			query.Add("token",rettoken)
+			query.Add("username",user_name)
 		}
+		// } else {
+		// 	retcode = apis.ERROR_AUTH
+		// }
 	}
 	query.Add("code",strconv.Itoa(retcode))
 	c.Redirect(http.StatusTemporaryRedirect,"http://localhost:8080/login?"+query.Encode())

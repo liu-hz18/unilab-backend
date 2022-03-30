@@ -10,6 +10,7 @@ import (
 	// "unilab-backend/database"
 	"unilab-backend/middleware"
 	"unilab-backend/auth"
+	"unilab-backend/os"
 )
 
 // NIfIDMtN?8In
@@ -65,6 +66,7 @@ func main() {
 	// router.POST("/login", apis.UserLoginHandler)
 	router.GET("/login",auth.HandleLogin)
 	router.GET("/callback",auth.HandleCallback)
+	router.GET("/Os/Grade",os.HandleOsGrade)
 	userApis := router.Group("/user")
 	userApis.Use(middleware.JWTMiddleWare())
 	{

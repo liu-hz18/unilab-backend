@@ -85,3 +85,14 @@ func ErrorResponse(c *gin.Context, code int, msg string) {
 		"data": data,
 	})
 }
+
+
+func NoAccessResponse(c *gin.Context, msg string) {
+	data := make(map[string]interface{})
+	data["err"] = msg
+	c.JSON(http.StatusForbidden, gin.H{
+		"code": ERROR_AUTH_USER_PERMISSIONS,
+		"msg":  MsgFlags[ERROR_AUTH_USER_PERMISSIONS],
+		"data": data,
+	})
+}

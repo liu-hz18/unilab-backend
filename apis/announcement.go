@@ -21,6 +21,10 @@ func CreateAnnouncementHandler(c *gin.Context) {
 		return
 	}
 	log.Println(postform)
+	if !database.CheckCourseAccessPermission(postform.CourseID, c.MustGet("user_id").(uint32)) {
+		NoAccessResponse(c, "You are not allowed to access this course.")
+		return
+	}
 	// get coursename
 	course_name, err := database.GetCourseByID(postform.CourseID)
 	if err != nil {
@@ -81,6 +85,10 @@ func FetchCourseAnnouncementsHandler(c *gin.Context) {
 		ErrorResponse(c, ERROR, err.Error())
 		return
 	}
+	if !database.CheckCourseAccessPermission(uint32(courseID), c.MustGet("user_id").(uint32)) {
+		NoAccessResponse(c, "You are not allowed to access this course.")
+		return
+	}
 	announcements, err := database.GetAnnouncementsByCourseID(uint32(courseID))
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
@@ -105,6 +113,10 @@ func GetAnnouncementHandler(c *gin.Context) {
 	annoID, err := strconv.ParseUint(annoid_str, 10, 32)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
+	if !database.CheckAnnouncementAccessPermission(uint32(annoID), c.MustGet("user_id").(uint32)) {
+		NoAccessResponse(c, "You are not allowed to access this announcement.")
 		return
 	}
 	info, err := database.GetAnnouncementInfo(uint32(annoID))

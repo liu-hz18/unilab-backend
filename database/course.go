@@ -175,3 +175,14 @@ func GetCourseByID(courseID uint32) (string, error) {
 	}
 	return course_name, nil
 }
+
+
+func CheckCourseAccessPermission(courseID, userID uint32) bool {
+	var course_id uint32
+	err := db.QueryRow("SELECT course_id FROM oj_db_test.oj_user_course WHERE course_id=? AND user_id=?;", courseID, userID).Scan(&course_id)
+	if err != nil {
+		log.Println(err)
+		return false;
+	}
+	return true;
+}

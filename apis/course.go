@@ -21,6 +21,10 @@ func GetCourseNameHandler(c *gin.Context) {
 		ErrorResponse(c, ERROR, err.Error())
 		return
 	}
+	if !database.CheckCourseAccessPermission(uint32(courseID), c.MustGet("user_id").(uint32)) {
+		NoAccessResponse(c, "You are not allowed to access this course.")
+		return
+	}
 	courseName, err := database.GetCourseByID(uint32(courseID))
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())

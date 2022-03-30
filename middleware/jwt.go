@@ -3,6 +3,7 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -62,6 +63,8 @@ func JWTMiddleWare() gin.HandlerFunc {
 			return
 		}
 		c.Set("user_type", user_type)
+		user_id, err := strconv.ParseUint(claims.Userid, 10, 32)
+		c.Set("user_id", uint32(user_id))
 		c.Next()
 	}
 }

@@ -147,3 +147,13 @@ func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 	return info, nil
 }
 
+
+func CheckAnnouncementAccessPermission(annoID, userID uint32) bool {
+	var course_id uint32
+	err := db.QueryRow("SELECT course_id FROM oj_db_test.oj_announcement WHERE announcement_id=?;", annoID).Scan(&course_id)
+	if err != nil {
+		log.Println(err)
+		return false;
+	}
+	return CheckCourseAccessPermission(course_id, userID)
+}

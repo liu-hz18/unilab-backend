@@ -37,12 +37,6 @@ func CreateAnnouncementHandler(c *gin.Context) {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	// insert into database
-	announcement_id, err := database.CreateNewAnnouncement(postform)
-	if err != nil {
-		ErrorResponse(c, ERROR, err.Error())
-		return
-	}
 	// save file to disk
 	base_path := database.COURSE_DATA_DIR + strconv.FormatUint(uint64(postform.CourseID), 10) + "_" + course_name + "/announcements/"
 	err = os.MkdirAll(base_path, 777)
@@ -53,6 +47,12 @@ func CreateAnnouncementHandler(c *gin.Context) {
 	files := form.File["file"]
 	if len(files) != 1 {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	// insert into database
+	announcement_id, err := database.CreateNewAnnouncement(postform)
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
 		return
 	}
 	for _, file := range files {

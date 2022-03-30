@@ -45,6 +45,7 @@ func main() {
 		studentApis.GET("/fetch-announcement", apis.FetchCourseAnnouncementsHandler)
 		studentApis.GET("/fetch-course-name", apis.GetCourseNameHandler)
 		studentApis.GET("/fetch-annocement", apis.GetAnnouncementHandler)
+		studentApis.GET("/fetch-question", apis.FetchCourseQuestionsHandler)
 	}
 	teacherApis := router.Group("/teacher")
 	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
@@ -52,6 +53,7 @@ func main() {
 		teacherApis.POST("/create-course", apis.CreateCourseHandler)
 		teacherApis.GET("/fetch-all-user", apis.GetAllUsersHandler)
 		teacherApis.POST("/create-announcement", apis.CreateAnnouncementHandler)
+		teacherApis.POST("/create-question", apis.CreateQuestionHandler)
 	}
 	adminApis := router.Group("/admin")
 	adminApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserAdmin))

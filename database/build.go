@@ -92,7 +92,6 @@ func InitDB() {
 		question_tag VARCHAR(255) NOT NULL,
 		question_creator INT(10) UNSIGNED NOT NULL,
 		question_score DECIMAL NOT NULL,
-		question_root_path VARCHAR(255) NOT NULL,
 		question_testcase_num INT UNSIGNED NOT NULL,
 		question_memory_limit INT UNSIGNED NOT NULL,
 		question_time_limit INT UNSIGNED NOT NULL,

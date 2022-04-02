@@ -32,8 +32,9 @@ func InitDB() {
 	// 动态高频查询信息, 和评测相关
 	// test-run table: user, file, question, course
 	// user log
-
+	
 	drop_test_database()
+
 	// create database
 	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS oj_db_test;")
 	if err != nil {
@@ -54,7 +55,8 @@ func InitDB() {
 		user_email VARCHAR(255) NOT NULL,
 		user_git_tsinghua_id INT UNSIGNED NOT NULL,
 		user_last_login_time DATETIME NOT NULL,
-		user_type TINYINT UNSIGNED NOT NULL
+		user_type TINYINT UNSIGNED NOT NULL,
+		user_token VARCHAR(255) NOT NULL DEFAULT ''
 	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)

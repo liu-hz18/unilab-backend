@@ -8,7 +8,7 @@ import (
 
 type Claims struct {
 	Userid   string `json:"userid"`
-	Password string `json:"password"`
+	UserName string `json:"username"`
 	jwt.StandardClaims
 }
 
@@ -27,12 +27,13 @@ func ParseToken(token string) (*Claims, error) {
 	return nil, err
 }
 
-func TokenGenerator(userid, password string) (string, error) {
+func TokenGenerator(userid, username string) (string, error) {
 	nowTime := time.Now()
+	// 6h 后失效
 	expireTime := nowTime.Add(time.Hour * 6)
 	claims := Claims{
 		userid,
-		password,
+		username,
 		jwt.StandardClaims{
 			Audience:  userid,
 			Id:        userid,

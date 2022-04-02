@@ -71,6 +71,7 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 		return err
 	}
 	var insertCourseStudent string = "INSERT INTO oj_db_test.oj_user_course(course_id, user_id, user_type) VALUES "
+	var haveStudents bool = false
 	for index, studentID := range courseform.Students {
 		var existInTeacher bool = false;
 		for _, teacherID := range courseform.Teachers {
@@ -86,13 +87,16 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 			insertCourseStudent += fmt.Sprintf( "(%d, %d,'%s'),", course_id, studentID, "student")
 		} else {
 			insertCourseStudent += fmt.Sprintf( "(%d, %d,'%s');", course_id, studentID, "student")
+			haveStudents = true
 		}
 	}
-	_, err = tx.Exec(insertCourseStudent)
-	if err != nil {
-		_ = tx.Rollback()
-		log.Println(err)
-		return err
+	if haveStudents {
+		_, err = tx.Exec(insertCourseStudent)
+		if err != nil {
+			_ = tx.Rollback()
+			log.Println(err)
+			return err
+		}
 	}
 	_ = tx.Commit()
 	log.Printf("CreateNewCourse() commit trans action successfully.")
@@ -119,11 +123,6 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 		return nil, err
 	}
 	courseIDs := []uint32{}
-	// if !checkTableExists("oj_user_course") {
-	// 	_ = tx.Rollback()
-	// 	log.Println(err)
-	// 	return nil, err
-	// }
 	res, err := tx.Query("SELECT course_id FROM oj_db_test.oj_user_course where user_id=?;", userid)
 	if err != nil {
 		_ = tx.Rollback()

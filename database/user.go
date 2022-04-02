@@ -1,8 +1,8 @@
 package database
 
 import (
-	"fmt"
 	"log"
+	"time"
 )
 
 // user type
@@ -17,6 +17,68 @@ type UserInfo struct {
 	Name string `json:"name"`
 }
 
+type CreateUser struct {
+	ID             uint32 
+	UserName       string 
+	RealName       string
+	Email          string
+	GitID          uint32
+	LastLoginTime  time.Time
+	Type           uint8
+	GitAccessToken string
+}
+
+
+func CreateNewUser(user CreateUser) error {
+	_, err := db.Exec(`INSERT INTO oj_db_test.oj_user
+		(user_id, user_name, user_real_name, user_email, user_git_tsinghua_id, user_last_login_time, user_type)
+		VALUES
+		(?, ?, ?, ?, ?, ?, ?)
+	`,
+		user.ID,
+		user.UserName,
+		user.RealName,
+		user.Email,
+		user.GitID,
+		time.Now(),
+		user.Type,
+	)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+
+func UpdateUserAccessToken(userid string, accessToken string) error {
+	_, err := db.Exec(`UPDATE oj_db_test.oj_user SET
+		user_last_login_time = ?,
+		user_token = ?
+		WHERE
+		user_id = ?
+	`,
+		time.Now(),
+		accessToken,
+		userid,
+	)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+
+func GetUserAccessToken(userid string) (string, error) {
+	_, err := db.Exec("USE oj_db_test;")
+	var access_token string
+	err = db.QueryRow("SELECT user_token from oj_db_test.oj_user where user_id=?;", userid).Scan(&access_token)
+	log.Println("GetUserAccessToken()", userid, access_token)
+	return access_token, err
+}
+
+
 func CheckUserExist(userid string) bool {
 	var userid_db string
 	err := db.QueryRow("SELECT user_id from oj_user where user_id=?;", userid).Scan(&userid_db)
@@ -28,9 +90,8 @@ func CheckUserExist(userid string) bool {
 }
 
 func GetUserType(userid string) (uint8, error) {
-	_, err := db.Exec("USE oj_db_test;")
 	var user_type_db uint8
-	err = db.QueryRow("SELECT user_type from oj_db_test.oj_user where user_id=?;", userid).Scan(&user_type_db)
+	err := db.QueryRow("SELECT user_type from oj_db_test.oj_user where user_id=?;", userid).Scan(&user_type_db)
 	log.Println("GetUserType()", userid, user_type_db)
 	return user_type_db, err
 }
@@ -66,15 +127,4 @@ func GetAllUsersNameAndID() ([]UserInfo, error) {
 		userinfos = append(userinfos, info)
 	}
 	return userinfos, nil
-}
-
-func checkTableExists(tableName string) bool {
-	mySqlStr := fmt.Sprintf("SELECT * FROM oj_db_test.%s;", tableName)
-	res, err := db.Query(mySqlStr)
-	if err != nil {
-		log.Println("table ", tableName, "not existed. ERROR:", err.Error())
-		return false;
-	}
-	defer res.Close()
-	return true;
 }

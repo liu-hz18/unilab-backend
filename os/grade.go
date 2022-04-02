@@ -153,7 +153,14 @@ func GetOsGradeHandler(c *gin.Context){
 		return
 	}
 	trace := gitlab_api.Get_project_traces("labs-" + id, id, accessToken)
-    tests,_ := Grade(trace)
+    if trace == "" {
+		c.JSON(http.StatusOK,gin.H{
+			"tests": []Test{},
+			"outputs": []output{},
+		})
+		return
+	}
+	tests, _ := Grade(trace)
 	// test,_:=json.Marshal(tests)
 	// fmt.Println(tests[0])
 	c.JSON(http.StatusOK,gin.H{

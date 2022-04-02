@@ -30,7 +30,7 @@ func get(urls string, data map[string]string, userid string, access_token string
 	body,_ := ioutil.ReadAll(response.Body)
 	var result []map[string]interface{}
 	_=json.Unmarshal(body,&result)
-	return result,string(body)
+	return result, string(body)
 }
 
 func post(url string, data map[string]interface{}) map[string]interface{} {
@@ -44,14 +44,17 @@ func post(url string, data map[string]interface{}) map[string]interface{} {
 	return result
 }
 
-func Get_project_info(project_name string, userid string, accessToken string) (string,string,string){
+func Get_project_info(project_name string, userid string, accessToken string) (string,string,string) {
 	data := make(map[string] string)
 	data["search"]=project_name
 	data["search_namespaces"]="true"
 	// data["page"]="1"
 	// data["per_page"]="1"
 	projects,_ := get("/projects", data, userid, accessToken)
-	project:=projects[0]
+	if projects == nil || len(projects) == 0 {
+		return "", "", ""
+	}
+	project := projects[0]
 	// fmt.Println("id: ",projects["id"])
 	// fmt.Println("name: ",projects["name"])
 	return strconv.Itoa(int(project["id"].(float64))),project["name"].(string),project["name_with_namespace"].(string)
@@ -85,8 +88,11 @@ func Get_job_trace(project_id string, job_id string, userid string, accessToken 
 	return string(trace)
 }
 
-func Get_project_traces(project_name string, userid string, access_token string) string{
+func Get_project_traces(project_name string, userid string, access_token string) string {
 	id,_,_ := Get_project_info(project_name, userid, access_token)
+	if id == "" {
+		return ""
+	}
 	// fmt.Println(id)
 	// branches:=Get_branches(id)
 	// for _,branch :=range branches{

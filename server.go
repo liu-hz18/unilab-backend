@@ -35,9 +35,7 @@ func main() {
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	// router.POST("/login", apis.UserLoginHandler)
 	router.GET("/login", auth.UserLoginHandler)
-	
 	router.GET("/callback", auth.GitLabCallBackHandler)
-	router.GET("/Os/Grade", os.GetOsGradeHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
 	{
@@ -46,6 +44,7 @@ func main() {
 		studentApis.GET("/fetch-course-name", apis.GetCourseNameHandler)
 		studentApis.GET("/fetch-annocement", apis.GetAnnouncementHandler)
 		studentApis.GET("/fetch-question", apis.FetchCourseQuestionsHandler)
+		studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
 	}
 	teacherApis := router.Group("/teacher")
 	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))

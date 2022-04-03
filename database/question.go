@@ -1,8 +1,12 @@
 package database
 
 import (
+	"io/ioutil"
 	"log"
+	"os"
 	"strconv"
+	"time"
+	"unilab-backend/utils"
 )
 
 type CreateQuestionForm struct {
@@ -27,6 +31,24 @@ type Question struct {
 	Language string
 	TotalTestNum uint32
 	TotalACNum uint32
+	IssueTime time.Time
+}
+
+type QuestionInfo struct {
+	ID uint32
+	Title string
+	Tag string
+	Creator string
+	Score string
+	TestCaseNum uint32
+	MemoryLimit uint32
+	TimeLimit uint32
+	Language string
+	TotalTestNum uint32
+	TotalACNum uint32
+	IssueTime string
+	Content string
+	AppendixFile string
 }
 
 func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32) (uint32, error) {
@@ -39,9 +61,9 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32) (uint32,
 	}
 	// insert a new question
 	result, err := tx.Exec(`INSERT INTO oj_db_test.oj_question
-		(question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_compile_options, question_test_total_num, question_test_ac_num)
+		(question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_compile_options, question_test_total_num, question_test_ac_num, issue_time)
 		VALUES
-		(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+		(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`,
 		questionForm.Title,
 		questionForm.Tag,
@@ -54,6 +76,7 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32) (uint32,
 		"",
 		0,
 		0,
+		time.Now(),
 	)
 	if err != nil {
 		_ = tx.Rollback()
@@ -103,7 +126,7 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 			return nil, err
 		}
 		var userid uint32
-		err = db.QueryRow("SELECT question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_test_total_num, question_test_ac_num FROM oj_db_test.oj_question WHERE question_id=?;", question.ID).Scan(
+		err = db.QueryRow("SELECT question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_test_total_num, question_test_ac_num, issue_time FROM oj_db_test.oj_question WHERE question_id=?;", question.ID).Scan(
 			&question.Title,
 			&question.Tag,
 			&userid,
@@ -114,6 +137,7 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 			&question.Language,
 			&question.TotalTestNum,
 			&question.TotalACNum,
+			&question.IssueTime,
 		)
 		if err != nil {
 			log.Println(err)
@@ -129,4 +153,59 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 	}
 	log.Println("GetQuestionsByCourseID() commit trans action successfully.")
 	return questions, nil
+}
+
+
+func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {
+	question := QuestionInfo{}
+	var userid uint32
+	var issue_time time.Time
+	question.ID = 0
+	err := db.QueryRow("SELECT question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_test_total_num, question_test_ac_num, issue_time FROM oj_db_test.oj_question WHERE question_id=?;", questionID).Scan(
+		&question.Title,
+		&question.Tag,
+		&userid,
+		&question.Score,
+		&question.TestCaseNum,
+		&question.MemoryLimit,
+		&question.TimeLimit,
+		&question.Language,
+		&question.TotalTestNum,
+		&question.TotalACNum,
+		&issue_time,
+	)
+	if err != nil {
+		log.Println(err)
+		return question, err
+	}
+	username, err := GetUserName(strconv.FormatUint(uint64(userid), 10))
+	if err != nil {
+		log.Println(err)
+		return question, err
+	}
+	question.Creator = username
+	question.IssueTime = issue_time.Format("2006/01/02 15:04")
+	log.Println(question)
+	// read description from disk
+	files_dir := QUESTION_DATA_DIR + strconv.FormatUint(uint64(questionID), 10) + "_" + question.Title + "/"
+	f, err := os.Open(files_dir + "description.md")
+	if err != nil {
+		log.Println(err)
+		return question, err
+	}
+	defer f.Close()
+ 	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.Println(err)
+		return question, err
+	}
+	question.Content = string(content)
+	// check appendix
+	if utils.FileExists(files_dir + "appendix.zip") {
+		question.AppendixFile = files_dir + "appendix.zip"
+	} else {
+		question.AppendixFile = ""
+	}
+	question.ID = questionID
+	return question, nil
 }

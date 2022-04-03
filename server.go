@@ -42,8 +42,10 @@ func main() {
 		studentApis.GET("/fetch-my-course", apis.FetchUserCoursesHandler)
 		studentApis.GET("/fetch-announcement", apis.FetchCourseAnnouncementsHandler)
 		studentApis.GET("/fetch-course-name", apis.GetCourseNameHandler)
-		studentApis.GET("/fetch-annocement", apis.GetAnnouncementHandler)
+		studentApis.GET("/fetch-announcement-detail", apis.GetAnnouncementHandler)
 		studentApis.GET("/fetch-question", apis.FetchCourseQuestionsHandler)
+		studentApis.GET("fetch-question-detail", apis.FetchQuestionHandler)
+		studentApis.POST("fetch-question-appendix", apis.FetchQuestionAppendix)
 		studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
 	}
 	teacherApis := router.Group("/teacher")

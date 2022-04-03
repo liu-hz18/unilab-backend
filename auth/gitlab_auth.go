@@ -110,7 +110,7 @@ func GitLabCallBackHandler(c *gin.Context){
 		log.Println(err)
 		return
 	}
-	// TODO: auto create user and confirm priority
+	// TODO: auto confirm user authority
 	if database.CheckUserExist(user_id_str) {
 		err = database.UpdateUserAccessToken(user_id_str, token.AccessToken)
 		if err != nil {

@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"log"
+	"os"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -22,7 +23,7 @@ func InitDB() {
 		log.Fatal(err)
 		return
 	}
-	log.Println("db connection established")
+	log.Println("db connection established.")
 	// 静态低频查询信息
 	// - 多对多: user table, course table, 建立关联表，总共3个表
 	// - 多对多: question table, homework table, 建立关联表，总共3个
@@ -34,6 +35,7 @@ func InitDB() {
 	// user log
 	
 	drop_test_database()
+	drop_file_dir()
 
 	// create database
 	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS oj_db_test;")
@@ -101,6 +103,7 @@ func InitDB() {
 		question_compile_options VARCHAR(255) NOT NULL,
 		question_test_total_num INT UNSIGNED NOT NULL,
 		question_test_ac_num INT UNSIGNED NOT NULL,
+		issue_time DATETIME NOT NULL,
 		CONSTRAINT c_oj_question FOREIGN KEY (question_creator) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE
 	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
 	if err != nil {
@@ -269,6 +272,14 @@ func PreinitDBTestData() {
 
 func drop_test_database() {
 	_, err := db.Exec("DROP DATABASE IF EXISTS oj_db_test;")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+}
+
+func drop_file_dir() {
+	err := os.RemoveAll(FILE_SAVE_ROOT_DIR)
 	if err != nil {
 		log.Fatal(err)
 		return

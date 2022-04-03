@@ -136,6 +136,7 @@ func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 		log.Println(err)
 		return info, err
 	}
+	defer f.Close()
  	content, err := ioutil.ReadAll(f)
 	if err != nil {
 		log.Println(err)

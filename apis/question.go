@@ -170,6 +170,3 @@ func FetchQuestionAppendix(c *gin.Context) {
   	c.Header("Cache-Control", "no-cache")
 	c.File(appendix_path)
 }
-
-// TODO: submit code
-

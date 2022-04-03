@@ -155,6 +155,11 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 	return questions, nil
 }
 
+func GetQuestionTitleByID(questionID uint32) (string, error) {
+	var title string
+	err := db.QueryRow("SELECT question_name FROM oj_db_test.oj_question WHERE question_id=?;", questionID).Scan(&title)
+	return title, err
+}
 
 func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {
 	question := QuestionInfo{}

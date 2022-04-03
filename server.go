@@ -46,6 +46,7 @@ func main() {
 		studentApis.GET("/fetch-question", apis.FetchCourseQuestionsHandler)
 		studentApis.GET("fetch-question-detail", apis.FetchQuestionHandler)
 		studentApis.POST("fetch-question-appendix", apis.FetchQuestionAppendix)
+		studentApis.POST("/submit-code", apis.SubmitCodeHandler)
 		studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
 	}
 	teacherApis := router.Group("/teacher")

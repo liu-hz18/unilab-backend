@@ -162,11 +162,14 @@ func InitDB() {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_test_run(
 		test_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		test_launch_time DATETIME NOT NULL,
+		
 		course_id INT UNSIGNED NOT NULL,
 		question_id INT UNSIGNED NOT NULL,
-		test_case_num INT UNSIGNED NOT NULL,
-		upload_file_path VARCHAR(255) NOT NULL,
 		user_id INT(10) UNSIGNED NOT NULL,
+
+		language VARCHAR(255) NOT NULL,
+		save_dir VARCHAR(255) NOT NULL,
+		compile_result VARCHAR(1024) NOT NULL DEFAULT '',
 		CONSTRAINT c_oj_test_run_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_test_run_2 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_test_run_3 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -196,7 +199,7 @@ func InitDB() {
 		latest_test_id BIGINT UNSIGNED NOT NULL,
 		best_score INT UNSIGNED NOT NULL,
 		best_test_id BIGINT UNSIGNED NOT NULL,
-		launch_times INT UNSIGNED NOT NULL,
+		launch_times INT UNSIGNED NOT NULL DEFAULT 0,
 		CONSTRAINT c_oj_question_user_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_question_user_2 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_question_user_3 FOREIGN KEY (latest_test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE,

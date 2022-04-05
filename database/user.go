@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"log"
 	"time"
 )
@@ -31,7 +32,7 @@ type CreateUser struct {
 
 func CreateNewUser(user CreateUser) error {
 	_, err := db.Exec(`INSERT INTO oj_db_test.oj_user
-		(user_id, user_name, user_real_name, user_email, user_git_tsinghua_id, user_last_login_time, user_type)
+		(user_id, user_name, user_real_name, user_email, user_git_tsinghua_id, user_last_login_time, user_signup_time, user_type)
 		VALUES
 		(?, ?, ?, ?, ?, ?, ?)
 	`,
@@ -40,6 +41,7 @@ func CreateNewUser(user CreateUser) error {
 		user.RealName,
 		user.Email,
 		user.GitID,
+		time.Now(),
 		time.Now(),
 		user.Type,
 	)
@@ -60,6 +62,32 @@ func UpdateUserAccessToken(userid string, accessToken string) error {
 	`,
 		time.Now(),
 		accessToken,
+		userid,
+	)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+func UpdateUserInfo(userid string, info CreateUser) error {
+	_, err := db.Exec(`UPDATE oj_db_test.oj_user SET
+		user_name = ?,
+		user_real_name = ?,
+		user_email = ?,
+		user_git_tsinghua_id = ?,
+		user_last_login_time = ?,
+		user_token = ?
+		WHERE
+		user_id = ?
+	`,
+		info.UserName,
+		info.RealName,
+		info.Email,
+		info.GitID,
+		time.Now(),
+		info.GitAccessToken,
 		userid,
 	)
 	if err != nil {
@@ -127,4 +155,41 @@ func GetAllUsersNameAndID() ([]UserInfo, error) {
 		userinfos = append(userinfos, info)
 	}
 	return userinfos, nil
+}
+
+func GetAllTeachersNameAndID() ([]UserInfo, error) {
+	userinfos := []UserInfo{}
+	res, err := db.Query("SELECT user_id, user_name FROM oj_db_test.oj_user WHERE user_type>=?;", UserTeacher)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer res.Close()
+	for res.Next() {
+		var info UserInfo
+		err := res.Scan(&info.ID, &info.Name)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		userinfos = append(userinfos, info)
+	}
+	return userinfos, nil
+}
+
+func CreateUsersIfNotExists(userIDs []uint32, authority uint8) error {
+	var insertSqlStr string = "INSERT IGNORE INTO oj_db_test.oj_user (user_id, user_type, user_signup_time) VALUES "
+	for index, user_id := range userIDs {
+		if index < len(userIDs)-1 {
+			insertSqlStr += fmt.Sprintf("(%d, %d, NOW()),", user_id, authority)
+		} else {
+			insertSqlStr += fmt.Sprintf("(%d, %d, NOW());", user_id, authority)
+		}
+	}
+	_, err := db.Exec(insertSqlStr)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
 }

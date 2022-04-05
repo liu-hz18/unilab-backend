@@ -110,24 +110,29 @@ func GitLabCallBackHandler(c *gin.Context){
 		log.Println(err)
 		return
 	}
-	// TODO: auto confirm user authority
+	// confirm user authority
+	var user_type_tmp uint8 = database.UserStudent
+	if isAdmin(user_id_str) {
+		user_type_tmp = database.UserAdmin
+	}
+	newUser := database.CreateUser{
+		ID: user_id,
+		UserName: userinfo.UserName,
+		RealName: userinfo.RealName,
+		Email: userinfo.Email,
+		GitID: userinfo.ID,
+		LastLoginTime: time.Now(),
+		Type:  user_type_tmp, // lowest authority, UserStudent
+		GitAccessToken: token.AccessToken,
+	}
 	if database.CheckUserExist(user_id_str) {
-		err = database.UpdateUserAccessToken(user_id_str, token.AccessToken)
+		err = database.UpdateUserInfo(user_id_str, newUser)
+		// err = database.UpdateUserAccessToken(user_id_str, token.AccessToken)
 		if err != nil {
-			log.Println("error in update git token: ", err)
+			log.Println("error in update user info: ", err)
 			return
 		}
 	} else {
-		newUser := database.CreateUser{
-			ID: user_id,
-			UserName: userinfo.UserName,
-			RealName: userinfo.RealName,
-			Email: userinfo.Email,
-			GitID: userinfo.ID,
-			LastLoginTime: time.Now(),
-			Type: database.UserTeacher, // lowest authority, UserStudent
-			GitAccessToken: token.AccessToken,
-		}
 		err = database.CreateNewUser(newUser)
 		if err != nil {
 			log.Println("error in create new user: ", err)

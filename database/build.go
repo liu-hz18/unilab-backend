@@ -52,12 +52,13 @@ func InitDB() {
 	// user_type: [student, teacher, admin]
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_user(
 		user_id INT(10) UNSIGNED NOT NULL PRIMARY KEY,
-		user_name VARCHAR(16) NOT NULL, 
-		user_real_name VARCHAR(50) NOT NULL,
-		user_email VARCHAR(255) NOT NULL,
-		user_git_tsinghua_id INT UNSIGNED NOT NULL,
+		user_name VARCHAR(16) NOT NULL DEFAULT 'anonymous', 
+		user_real_name VARCHAR(50) NOT NULL DEFAULT 'anonymous',
+		user_email VARCHAR(255) NOT NULL DEFAULT '',
+		user_git_tsinghua_id INT UNSIGNED NOT NULL DEFAULT 0,
 		user_last_login_time DATETIME NOT NULL,
 		user_type TINYINT UNSIGNED NOT NULL,
+		user_signup_time DATETIME NOT NULL,
 		user_token VARCHAR(255) NOT NULL DEFAULT ''
 	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
 	if err != nil {
@@ -192,23 +193,23 @@ func InitDB() {
 		return
 	}
 	// create question <-> user table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_question_user(
-		question_id INT UNSIGNED NOT NULL,
-		user_id INT UNSIGNED NOT NULL,
-		latest_score INT UNSIGNED NOT NULL,
-		latest_test_id BIGINT UNSIGNED NOT NULL,
-		best_score INT UNSIGNED NOT NULL,
-		best_test_id BIGINT UNSIGNED NOT NULL,
-		launch_times INT UNSIGNED NOT NULL DEFAULT 0,
-		CONSTRAINT c_oj_question_user_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
-		CONSTRAINT c_oj_question_user_2 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-		CONSTRAINT c_oj_question_user_3 FOREIGN KEY (latest_test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE,
-		CONSTRAINT c_oj_question_user_4 FOREIGN KEY (best_test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
+	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_question_user(
+	// 	question_id INT UNSIGNED NOT NULL,
+	// 	user_id INT UNSIGNED NOT NULL,
+	// 	latest_score INT UNSIGNED NOT NULL,
+	// 	latest_test_id BIGINT UNSIGNED NOT NULL,
+	// 	best_score INT UNSIGNED NOT NULL,
+	// 	best_test_id BIGINT UNSIGNED NOT NULL,
+	// 	launch_times INT UNSIGNED NOT NULL DEFAULT 0,
+	// 	CONSTRAINT c_oj_question_user_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
+	// 	CONSTRAINT c_oj_question_user_2 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+	// 	CONSTRAINT c_oj_question_user_3 FOREIGN KEY (latest_test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE,
+	// 	CONSTRAINT c_oj_question_user_4 FOREIGN KEY (best_test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE
+	// ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	return
+	// }
 	log.Println("test db successfully created")
 }
 

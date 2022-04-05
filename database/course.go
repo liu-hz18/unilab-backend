@@ -31,7 +31,7 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 		return err
 	}
 	// insert new course
-	_, err = tx.Exec(`INSERT INTO oj_db_test.oj_course
+	result, err := tx.Exec(`INSERT INTO oj_db_test.oj_course
 		(course_name, course_teacher, course_term, course_type)
 		VALUES
 		(?, ?, ?, ?);
@@ -47,8 +47,23 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 		return err
 	}
 	// get course id
-	var course_id uint32
-	err = tx.QueryRow("SELECT course_id from oj_db_test.oj_course where course_name=?;", courseform.CourseName).Scan(&course_id)
+	course_id, err := result.LastInsertId()
+	if err != nil {
+		_ = tx.Rollback()
+		log.Println(err)
+		return err
+	}
+	// create students if not existed
+	// WARN: teachers are not allowed to add teachers
+	var insertSqlStr string = "INSERT IGNORE INTO oj_db_test.oj_user (user_id, user_type, user_signup_time) VALUES "
+	for index, user_id := range courseform.Students {
+		if index < len(courseform.Students)-1 {
+			insertSqlStr += fmt.Sprintf("(%d, %d, NOW()),", user_id, UserStudent)
+		} else {
+			insertSqlStr += fmt.Sprintf("(%d, %d, NOW());", user_id, UserStudent)
+		}
+	}
+	_, err = tx.Exec(insertSqlStr)
 	if err != nil {
 		_ = tx.Rollback()
 		log.Println(err)

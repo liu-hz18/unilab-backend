@@ -48,12 +48,17 @@ func CreateCourseHandler(c *gin.Context) {
 		log.Println(err)
 		data["err"] = err.Error()
 	} else {
-		// insert into database
 		log.Println(courseForm)
-		err := database.CreateNewCourse(courseForm)
-		if err != nil {
-			data["err"] = err.Error()
-			log.Println(err)
+		if len(courseForm.Teachers) == 0 || len(courseForm.Students) == 0 {
+			data["err"] = "Course's teachers or students are none."
+			log.Println(data["err"])
+		} else {
+			// insert into database
+			err := database.CreateNewCourse(courseForm)
+			if err != nil {
+				data["err"] = err.Error()
+				log.Println(err)
+			}
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{

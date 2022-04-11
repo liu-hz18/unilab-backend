@@ -52,13 +52,13 @@ func InitDB() {
 	// user_type: [student, teacher, admin]
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_user(
 		user_id INT(10) UNSIGNED NOT NULL PRIMARY KEY,
-		user_name VARCHAR(16) NOT NULL DEFAULT 'anonymous', 
-		user_real_name VARCHAR(50) NOT NULL DEFAULT 'anonymous',
+		user_name VARCHAR(16) NOT NULL DEFAULT 'unknown', 
+		user_real_name VARCHAR(50) NOT NULL DEFAULT 'unknown',
 		user_email VARCHAR(255) NOT NULL DEFAULT '',
 		user_git_tsinghua_id INT UNSIGNED NOT NULL DEFAULT 0,
-		user_last_login_time DATETIME NOT NULL,
+		user_last_login_time DATETIME NOT NULL DEFAULT NOW(),
 		user_type TINYINT UNSIGNED NOT NULL,
-		user_signup_time DATETIME NOT NULL,
+		user_signup_time DATETIME NOT NULL DEFAULT NOW(),
 		user_token VARCHAR(255) NOT NULL DEFAULT ''
 	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
 	if err != nil {

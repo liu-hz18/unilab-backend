@@ -14,8 +14,8 @@ const (
 )
 
 type UserInfo struct {
-	ID uint32 `json:"id"`
-	Name string `json:"name"`
+	ID uint32 `json:"id" form:"id" uri:"id" binding:"required"`
+	Name string `json:"name" form:"name" uri:"name" binding:"required"`
 }
 
 type CreateUser struct {
@@ -34,7 +34,7 @@ func CreateNewUser(user CreateUser) error {
 	_, err := db.Exec(`INSERT INTO oj_db_test.oj_user
 		(user_id, user_name, user_real_name, user_email, user_git_tsinghua_id, user_last_login_time, user_signup_time, user_type)
 		VALUES
-		(?, ?, ?, ?, ?, ?, ?)
+		(?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		user.ID,
 		user.UserName,
@@ -109,7 +109,7 @@ func GetUserAccessToken(userid string) (string, error) {
 
 func CheckUserExist(userid string) bool {
 	var userid_db string
-	err := db.QueryRow("SELECT user_id from oj_user where user_id=?;", userid).Scan(&userid_db)
+	err := db.QueryRow("SELECT user_id from oj_db_test.oj_user where user_id=?;", userid).Scan(&userid_db)
 	if err != nil {
 		log.Printf("get user failed, err: %v\n", err)
 		return false
@@ -139,7 +139,7 @@ func GetUserNameType(userid string) (string, uint8, error) {
 
 func GetAllUsersNameAndID() ([]UserInfo, error) {
 	userinfos := []UserInfo{}
-	res, err := db.Query("SELECT user_id, user_name FROM oj_db_test.oj_user;")
+	res, err := db.Query("SELECT user_id, user_real_name FROM oj_db_test.oj_user;")
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -159,7 +159,7 @@ func GetAllUsersNameAndID() ([]UserInfo, error) {
 
 func GetAllTeachersNameAndID() ([]UserInfo, error) {
 	userinfos := []UserInfo{}
-	res, err := db.Query("SELECT user_id, user_name FROM oj_db_test.oj_user WHERE user_type>=?;", UserTeacher)
+	res, err := db.Query("SELECT user_id, user_real_name FROM oj_db_test.oj_user WHERE user_type>=?;", UserTeacher)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -177,19 +177,42 @@ func GetAllTeachersNameAndID() ([]UserInfo, error) {
 	return userinfos, nil
 }
 
-func CreateUsersIfNotExists(userIDs []uint32, authority uint8) error {
-	var insertSqlStr string = "INSERT IGNORE INTO oj_db_test.oj_user (user_id, user_type, user_signup_time) VALUES "
-	for index, user_id := range userIDs {
-		if index < len(userIDs)-1 {
-			insertSqlStr += fmt.Sprintf("(%d, %d, NOW()),", user_id, authority)
+func CreateUsersIfNotExists(userInfos []UserInfo, authority uint8, update_auth bool) error {
+	// setup a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+		log.Printf("CreateUsersIfNotExists() begin trans action failed, err:%v\n", err)
+		return err
+	}
+	// insert new teacher if not existed
+	var insertSqlStr string;
+	if update_auth {
+		insertSqlStr = "INSERT INTO oj_db_test.oj_user (user_id, user_real_name, user_type) VALUES "
+	} else {
+		insertSqlStr = "INSERT IGNORE INTO oj_db_test.oj_user (user_id, user_real_name, user_type) VALUES "
+	}
+	for index, user_info := range userInfos {
+		if index < len(userInfos)-1 {
+			insertSqlStr += fmt.Sprintf("(%d, '%s', %d),", user_info.ID, user_info.Name, authority)
 		} else {
-			insertSqlStr += fmt.Sprintf("(%d, %d, NOW());", user_id, authority)
+			insertSqlStr += fmt.Sprintf("(%d, '%s', %d)", user_info.ID, user_info.Name, authority)
 		}
 	}
-	_, err := db.Exec(insertSqlStr)
+	if update_auth {
+		insertSqlStr += "ON DUPLICATE KEY UPDATE user_type=values(user_type);"
+	} else {
+		insertSqlStr += ";"
+	}
+	_, err = tx.Exec(insertSqlStr)
 	if err != nil {
+		_ = tx.Rollback()
 		log.Println(err)
 		return err
 	}
+	_ = tx.Commit()
+	log.Printf("CreateUsersIfNotExists() commit trans action successfully.")
 	return nil
 }

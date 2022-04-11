@@ -12,13 +12,18 @@ const (
 	CourseTypeSystem  uint8 = 3
 )
 
+type StudentInfo struct {
+	ID uint32 `json:"id" form:"id" uri:"id" binding:"required"`
+	Name string `json:"name" form:"name" uri:"name" binding:"required"`
+}
+
 type CreateCourseForm struct {
 	CourseName string   `json:"name" form:"name" uri:"name" binding:"required"`
 	CourseType int      `json:"type" form:"type" uri:"type" binding:"required"`
 	Creator    string   `json:"creator" form:"creator" uri:"creator" binding:"required"`
 	Term       string   `json:"term" form:"term" uri:"term" binding:"required"`
 	Teachers   []uint32 `json:"teachers" form:"teachers" uri:"teachers" binding:"required"`
-	Students   []uint32 `json:"students" form:"students" uri:"students" binding:"required"`
+	Students   []StudentInfo `json:"students" form:"students" uri:"students" binding:"required"`
 }
 
 func CreateNewCourse(courseform CreateCourseForm) error {
@@ -55,12 +60,12 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 	}
 	// create students if not existed
 	// WARN: teachers are not allowed to add teachers
-	var insertSqlStr string = "INSERT IGNORE INTO oj_db_test.oj_user (user_id, user_type, user_signup_time) VALUES "
-	for index, user_id := range courseform.Students {
+	var insertSqlStr string = "INSERT IGNORE INTO oj_db_test.oj_user (user_id, user_real_name, user_type) VALUES "
+	for index, user_info := range courseform.Students {
 		if index < len(courseform.Students)-1 {
-			insertSqlStr += fmt.Sprintf("(%d, %d, NOW()),", user_id, UserStudent)
+			insertSqlStr += fmt.Sprintf("(%d, '%s', %d),", user_info.ID, user_info.Name, UserStudent)
 		} else {
-			insertSqlStr += fmt.Sprintf("(%d, %d, NOW());", user_id, UserStudent)
+			insertSqlStr += fmt.Sprintf("(%d, '%s', %d);", user_info.ID, user_info.Name, UserStudent)
 		}
 	}
 	_, err = tx.Exec(insertSqlStr)
@@ -87,10 +92,10 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 	}
 	var insertCourseStudent string = "INSERT INTO oj_db_test.oj_user_course(course_id, user_id, user_type) VALUES "
 	var haveStudents bool = false
-	for index, studentID := range courseform.Students {
+	for index, student := range courseform.Students {
 		var existInTeacher bool = false;
 		for _, teacherID := range courseform.Teachers {
-			if teacherID == studentID {
+			if teacherID == student.ID {
 				existInTeacher = true;
 				break;
 			}
@@ -99,9 +104,9 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 			continue;
 		}
 		if index < len(courseform.Students)-1 {
-			insertCourseStudent += fmt.Sprintf( "(%d, %d,'%s'),", course_id, studentID, "student")
+			insertCourseStudent += fmt.Sprintf( "(%d, %d,'%s'),", course_id, student.ID, "student")
 		} else {
-			insertCourseStudent += fmt.Sprintf( "(%d, %d,'%s');", course_id, studentID, "student")
+			insertCourseStudent += fmt.Sprintf( "(%d, %d,'%s');", course_id, student.ID, "student")
 			haveStudents = true
 		}
 	}

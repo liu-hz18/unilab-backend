@@ -125,27 +125,21 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 
 
 type Course struct {
-	CourseID      uint32
-	CourseName    string
-	CourseTeacher string
-	CourseTerm    string
-	CourseType    uint8
+	CourseID          uint32
+	CourseName        string
+	CourseTeacher     string
+	CourseTerm        string
+	CourseType        uint8
+	CourseAnnounce    uint32
+	CourseAssignments uint32
+	NearestDue        string
 }
 
 func GetUserCourses(userid uint32) ([]Course, error) {
 	// read oj_user_course to get user-related courses' ids
-	tx, err := db.Begin()
-	if err != nil {
-		if tx != nil {
-			_ = tx.Rollback()
-		}
-		log.Printf("GetUserCourses() begin trans action failed, err:%v\n", err)
-		return nil, err
-	}
 	courseIDs := []uint32{}
-	res, err := tx.Query("SELECT course_id FROM oj_db_test.oj_user_course where user_id=?;", userid)
+	res, err := db.Query("SELECT course_id FROM oj_db_test.oj_user_course where user_id=?;", userid)
 	if err != nil {
-		_ = tx.Rollback()
 		log.Println(err)
 		return nil, err
 	}
@@ -154,7 +148,6 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 		var courseID uint32
 		err := res.Scan(&courseID)
 		if err != nil {
-			_ = tx.Rollback()
 			log.Println(err)
 			return nil, err
 		}
@@ -164,8 +157,8 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 	courses := []Course{}
 	for _, course_id := range courseIDs {
 		var course Course
-		err := tx.QueryRow(
-			"SELECT course_id, course_name, course_teacher, course_term, course_type from oj_db_test.oj_course where course_id=?;",
+		err := db.QueryRow(
+			"SELECT course_id, course_name, course_teacher, course_term, course_type FROM oj_db_test.oj_course WHERE course_id=?;",
 			course_id).Scan(
 				&course.CourseID,
 				&course.CourseName,
@@ -174,13 +167,44 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 				&course.CourseType,
 		)
 		if err != nil {
-			_ = tx.Rollback()
 			log.Println(err)
 			return nil, err
 		}
+		totalRow, err := db.Query("SELECT COUNT(*) FROM oj_db_test.oj_announcement WHERE course_id=?;", course_id)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		defer totalRow.Close()
+		var totalAnno uint32 = 0
+		for totalRow.Next() {
+			err := totalRow.Scan(&totalAnno)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+		}
+		course.CourseAnnounce = totalAnno
+		totalRow, err = db.Query("SELECT homework_due_time FROM oj_db_test.oj_homework WHERE course_id=? AND unix_timestamp(homework_begin_time) <= unix_timestamp(NOW()) AND unix_timestamp(NOW()) <= unix_timestamp(homework_due_time) ORDER BY homework_due_time DESC;", course_id)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		defer totalRow.Close()
+		var totalAssignment uint32 = 0
+		var nearestDue string = ""
+		for totalRow.Next() {
+			err := totalRow.Scan(&nearestDue)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			totalAssignment += 1
+		}
+		course.CourseAssignments = totalAssignment
+		course.NearestDue = nearestDue
 		courses = append(courses, course)
 	}
-	_ = tx.Commit()
 	log.Printf("GetUserCourses() commit trans action successfully.")
 	return courses, nil
 }

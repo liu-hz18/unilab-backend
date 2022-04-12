@@ -60,7 +60,7 @@ func InitDB() {
 		user_type TINYINT UNSIGNED NOT NULL,
 		user_signup_time DATETIME NOT NULL DEFAULT NOW(),
 		user_token VARCHAR(255) NOT NULL DEFAULT ''
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -72,7 +72,7 @@ func InitDB() {
 		course_teacher VARCHAR(32) NOT NULL,
 		course_term VARCHAR(64) NOT NULL,
 		course_type TINYINT UNSIGNED NOT NULL
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -85,7 +85,7 @@ func InitDB() {
 		user_type VARCHAR(255) NOT NULL,
 		CONSTRAINT c_oj_user_course_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_user_course_2 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -96,17 +96,17 @@ func InitDB() {
 		question_name VARCHAR(255) NOT NULL,
 		question_tag VARCHAR(255) NOT NULL,
 		question_creator INT(10) UNSIGNED NOT NULL,
-		question_score DECIMAL NOT NULL,
+		question_score INT UNSIGNED NOT NULL,
 		question_testcase_num INT UNSIGNED NOT NULL,
 		question_memory_limit INT UNSIGNED NOT NULL,
 		question_time_limit INT UNSIGNED NOT NULL,
 		question_language VARCHAR(255) NOT NULL,
 		question_compile_options VARCHAR(255) NOT NULL,
-		question_test_total_num INT UNSIGNED NOT NULL,
-		question_test_ac_num INT UNSIGNED NOT NULL,
+		question_test_total_num INT UNSIGNED NOT NULL DEFAULT 0,
+		question_test_ac_num INT UNSIGNED NOT NULL DEFAULT 0,
 		issue_time DATETIME NOT NULL,
 		CONSTRAINT c_oj_question FOREIGN KEY (question_creator) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -120,7 +120,7 @@ func InitDB() {
 		homework_description VARCHAR(255) default '',
 		course_id INT UNSIGNED NOT NULL,
 		CONSTRAINT c_oj_homework_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -131,7 +131,7 @@ func InitDB() {
 		homework_id INT UNSIGNED NOT NULL,
 		CONSTRAINT c_oj_question_homework_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_question_homework_2 FOREIGN KEY (homework_id) REFERENCES oj_homework(homework_id) ON DELETE CASCADE ON UPDATE CASCADE
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -142,7 +142,7 @@ func InitDB() {
 		course_id INT UNSIGNED NOT NULL,
 		CONSTRAINT c_oj_question_course_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_question_course_2 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE 
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -154,14 +154,14 @@ func InitDB() {
 		course_id INT UNSIGNED NOT NULL,
 		issue_time DATETIME NOT NULL,
 		CONSTRAINT c_oj_announcement_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 	// create test-run table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_test_run(
-		test_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		test_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		test_launch_time DATETIME NOT NULL,
 		
 		course_id INT UNSIGNED NOT NULL,
@@ -174,20 +174,21 @@ func InitDB() {
 		CONSTRAINT c_oj_test_run_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_test_run_2 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
 		CONSTRAINT c_oj_test_run_3 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 	// create testcase-run table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_testcase_run(
-		testcase_run_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		testcase_run_state VARCHAR(255) NOT NULL,
-		testcase_run_time_elapsed INT UNSIGNED NOT NULL,
-		testcase_run_memory_usage INT UNSIGNED NOT NULL,
-		test_id BIGINT UNSIGNED NOT NULL,
+		testcase_run_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		testcase_rank   INT UNSIGNED NOT NULL,
+		testcase_run_state VARCHAR(255) NOT NULL DEFAULT 'Pending',
+		testcase_run_time_elapsed INT UNSIGNED NOT NULL DEFAULT 0,
+		testcase_run_memory_usage INT UNSIGNED NOT NULL DEFAULT 0,
+		test_id INT UNSIGNED NOT NULL,
 		CONSTRAINT c_oj_testcase_run_1 FOREIGN KEY (test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
+	) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -197,9 +198,9 @@ func InitDB() {
 	// 	question_id INT UNSIGNED NOT NULL,
 	// 	user_id INT UNSIGNED NOT NULL,
 	// 	latest_score INT UNSIGNED NOT NULL,
-	// 	latest_test_id BIGINT UNSIGNED NOT NULL,
+	// 	latest_test_id INT UNSIGNED NOT NULL,
 	// 	best_score INT UNSIGNED NOT NULL,
-	// 	best_test_id BIGINT UNSIGNED NOT NULL,
+	// 	best_test_id INT UNSIGNED NOT NULL,
 	// 	launch_times INT UNSIGNED NOT NULL DEFAULT 0,
 	// 	CONSTRAINT c_oj_question_user_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
 	// 	CONSTRAINT c_oj_question_user_2 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE,

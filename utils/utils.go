@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -42,4 +43,19 @@ func StringToTime(tm string) time.Time {
 		if nil == err && !t.IsZero() { return t }
 	}
 	return time.Time{}
+}
+
+func GetDirSize(path string) (uint32, error) {
+	var size uint32 = 0
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			size += uint32(info.Size())
+		}
+		return err
+	})
+	return size, err
+}
+
+func CeilDivUint32(a, b uint32) uint32 {
+	return (a + b - 1) / b;
 }

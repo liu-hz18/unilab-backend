@@ -1,6 +1,7 @@
 package apis
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
 
 func CreateQuestionHandler(c *gin.Context) {
 	var postform database.CreateQuestionForm
@@ -24,20 +26,39 @@ func CreateQuestionHandler(c *gin.Context) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return
 	}
-	// get coursename
-	// course_name, err := database.GetCourseByID(postform.CourseID)
-	// if err != nil {
-	// 	ErrorResponse(c, INVALID_PARAMS, err.Error())
-	// 	return
-	// }
 	// get file
 	form, err := c.MultipartForm()
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
+	// get testcase file
+	testcase := form.File["testcase"]
+	if len(testcase) <= 0 || len(testcase) % 2 != 0 {
+		ErrorResponse(c, INVALID_PARAMS, "Test Cases Should be MORE than ONE PAIR of (*.in & *.ans) files!")
+		return
+	}
+	var testCaseNum uint32 = uint32(len(testcase) / 2)
+	// check testcase postfix
+	for i := 1; i <= int(testCaseNum); i++ {
+		var valid_in bool = false
+		var valid_ans bool = false
+		for _, file := range testcase {
+			filename := filepath.Base(file.Filename)
+			if (!valid_in && filename == fmt.Sprintf("%d.in", i)) {
+				valid_in = true
+			}
+			if (!valid_ans && filename == fmt.Sprintf("%d.ans", i)) {
+				valid_ans = true
+			}
+		}
+		if !valid_in || !valid_ans {
+			ErrorResponse(c, INVALID_PARAMS, "Test Cases Should be MORE than ONE PAIR of (*.in & *.ans) files!")
+			return
+		}
+	}
 	// insert into database
-	question_id, err := database.CreateQuestion(postform, c.MustGet("user_id").(uint32))
+	question_id, err := database.CreateQuestion(postform, c.MustGet("user_id").(uint32), testCaseNum)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
@@ -57,6 +78,7 @@ func CreateQuestionHandler(c *gin.Context) {
 		dst := question_base_path + "description.md"
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
+			os.RemoveAll(question_base_path)
 			return
 		}
 	}
@@ -67,16 +89,17 @@ func CreateQuestionHandler(c *gin.Context) {
 		dst := question_base_path + "appendix.zip"
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
+			os.RemoveAll(question_base_path)
 			return
 		}
 	}
-	testcase := form.File["testcase"]
 	for _, file := range testcase {
 		filename := filepath.Base(file.Filename)
 		log.Println("receive file: ", filename)
-		dst := question_base_path + "testcase.zip"
+		dst := question_base_path + filename
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
+			os.RemoveAll(question_base_path)
 			return
 		}
 	}

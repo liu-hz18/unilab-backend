@@ -51,7 +51,7 @@ type QuestionInfo struct {
 	AppendixFile string
 }
 
-func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32) (uint32, error) {
+func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCaseNum uint32) (uint32, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		if tx != nil {
@@ -69,7 +69,7 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32) (uint32,
 		questionForm.Tag,
 		creator_id,
 		questionForm.TotalScore,
-		0,
+		testCaseNum,
 		questionForm.MemoryLimit,
 		questionForm.TimeLimit,
 		questionForm.Language,
@@ -155,10 +155,11 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 	return questions, nil
 }
 
-func GetQuestionTitleByID(questionID uint32) (string, error) {
+func GetQuestionTitleAndTestCaseNumByID(questionID uint32) (string, uint32, error) {
 	var title string
-	err := db.QueryRow("SELECT question_name FROM oj_db_test.oj_question WHERE question_id=?;", questionID).Scan(&title)
-	return title, err
+	var num uint32
+	err := db.QueryRow("SELECT question_name, question_testcase_num FROM oj_db_test.oj_question WHERE question_id=?;", questionID).Scan(&title, &num)
+	return title, num, err
 }
 
 func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {

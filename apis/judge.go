@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"unilab-backend/database"
+	"unilab-backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +31,7 @@ func SubmitCodeHandler(c *gin.Context) {
 		return
 	}
 	// get question name
-	questionName, err := database.GetQuestionTitleByID(postform.QuestionID)
+	questionName, testCaseNum, err := database.GetQuestionTitleAndTestCaseNumByID(postform.QuestionID)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
@@ -59,7 +60,7 @@ func SubmitCodeHandler(c *gin.Context) {
 		}
 	}
 	// insert into test database
-	testID, err := database.CreateSubmitCode(postform, userid, submit_base_path)
+	testID, err := database.CreateSubmitRecord(postform, userid, submit_base_path, testCaseNum)
 	data := make(map[string]interface{})
 	data["result"] = testID
 	code := SUCCESS
@@ -70,11 +71,42 @@ func SubmitCodeHandler(c *gin.Context) {
 	})
 }
 
-// TODO: fetch all submit infos
+// fetch all submit test ids
 func FetchAllSubmitsStatus(c *gin.Context) {
-
+	courseID, err := utils.StringToUint32(c.Query("courseid"))
+	if err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	var userID uint32 = c.MustGet("user_id").(uint32)
+	if !database.CheckCourseAccessPermission(courseID, userID) {
+		NoAccessResponse(c, "You are not allowed to access this course.")
+		return
+	}
+	results, err := database.GetUserSubmitTests(courseID, userID)
+	data := make(map[string]interface{})
+	data["result"] = results
+	c.JSON(http.StatusOK, gin.H{
+		"code": SUCCESS,
+		"msg":  MsgFlags[SUCCESS],
+		"data": data,
+	})
 }
 
-// TODO: update one specific submit detail info
-
+// update one specific submit detail info
+func UpdateTestDetails(c *gin.Context) {
+	var testIDs []uint32
+	if err := c.ShouldBind(&testIDs); err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	details := database.GetTestDetailsByIDs(testIDs)
+	data := make(map[string]interface{})
+	data["result"] = details
+	c.JSON(http.StatusOK, gin.H{
+		"code": SUCCESS,
+		"msg":  MsgFlags[SUCCESS],
+		"data": data,
+	})
+}
 

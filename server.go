@@ -9,6 +9,7 @@ import (
 	"unilab-backend/judger"
 	"unilab-backend/middleware"
 	"unilab-backend/os"
+	"unilab-backend/taskqueue"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,6 +50,7 @@ func main() {
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.GET("/login", auth.UserLoginHandler)
 	router.GET("/callback", auth.GitLabCallBackHandler)
+	router.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
 	{

@@ -10,7 +10,7 @@ import (
 	"unilab-backend/middleware"
 	"unilab-backend/os"
 	"unilab-backend/taskqueue"
-
+	// "unilab-backend/os-server"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,6 +32,8 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	database.InitDB()
+	taskqueue.InitYTaskServer()
+	// OsServer.InitConsumer()
 	// database.PreinitDBTestData()
 
 	router := gin.Default()
@@ -50,7 +52,7 @@ func main() {
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.GET("/login", auth.UserLoginHandler)
 	router.GET("/callback", auth.GitLabCallBackHandler)
-	router.POST("/submit-task",taskqueue.TaskSubmitHandler)
+	// router.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
 	{
@@ -66,6 +68,7 @@ func main() {
 		studentApis.GET("/fetch-all-testids", apis.FetchAllSubmitsStatus)
 		studentApis.POST("/update-tests", apis.UpdateTestDetails)
 		studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
+		studentApis.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	}
 	teacherApis := router.Group("/teacher")
 	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))

@@ -30,5 +30,5 @@ build:
 dev-run: drop-db build-db build-table
 	go run main.go
 
-release-run: build-db build-table build
+run: build-db build-table build
 	./main.exe

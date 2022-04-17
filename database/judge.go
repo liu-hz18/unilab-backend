@@ -2,8 +2,8 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"time"
+	"unilab-backend/logging"
 	"unilab-backend/utils"
 )
 
@@ -19,10 +19,10 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 		if tx != nil {
 			_ = tx.Rollback()
 		}
-		log.Printf("CreateSubmitRecord() begin trans action failed: %v", err)
+		logging.Info("CreateSubmitRecord() begin trans action failed: %v", err)
 	}
 	// insert into test-run table
-	result, err := tx.Exec(`INSERT INTO oj_db_test.oj_test_run
+	result, err := tx.Exec(`INSERT INTO oj_test_run
 		(test_launch_time, course_id, question_id, user_id, language, save_dir)
 		VALUES
 		(?, ?, ?, ?, ?, ?);
@@ -36,24 +36,24 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 	)
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	testID, err := result.LastInsertId()
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	// update question submit count
-	_, err = tx.Exec(`UPDATE oj_db_test.oj_question SET question_test_total_num=question_test_total_num+1 WHERE question_id=?;`, form.QuestionID)
+	_, err = tx.Exec(`UPDATE oj_question SET question_test_total_num=question_test_total_num+1 WHERE question_id=?;`, form.QuestionID)
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	// insert into test-run table
-	var insertTestCaseSql = "INSERT INTO oj_db_test.oj_testcase_run (testcase_rank, test_id) VALUES "
+	var insertTestCaseSql = "INSERT INTO oj_testcase_run (testcase_rank, test_id) VALUES "
 	for i := 0; i < int(testcase_num)-1; i++ {
 		insertTestCaseSql += fmt.Sprintf("(%d, %d),", i, testID)
 	}
@@ -61,18 +61,18 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 	_, err = tx.Exec(insertTestCaseSql)
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	_ = tx.Commit()
-	log.Println("CreateSubmitRecord() commit trans action successfully.")
+	logging.Info("CreateSubmitRecord() commit trans action successfully.")
 	return uint32(testID), nil
 }
 
 func GetQuestionSubmitCounts(questionID, userID uint32) (uint32, error) {
-	totalRow, err := db.Query("SELECT COUNT(*) FROM oj_db_test.oj_test_run WHERE question_id=? AND user_id=?;", questionID, userID)
+	totalRow, err := db.Query("SELECT COUNT(*) FROM oj_test_run WHERE question_id=? AND user_id=?;", questionID, userID)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	defer totalRow.Close()
@@ -80,7 +80,7 @@ func GetQuestionSubmitCounts(questionID, userID uint32) (uint32, error) {
 	for totalRow.Next() {
 		err := totalRow.Scan(&total)
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			continue
 		}
 	}
@@ -88,9 +88,9 @@ func GetQuestionSubmitCounts(questionID, userID uint32) (uint32, error) {
 }
 
 func GetUserSubmitTests(courseID, userID uint32) ([]uint32, error) {
-	rows, err := db.Query("SELECT test_id FROM oj_db_test.oj_test_run WHERE user_id=? AND course_id=? ORDER BY test_launch_time desc;", userID, courseID)
+	rows, err := db.Query("SELECT test_id FROM oj_test_run WHERE user_id=? AND course_id=? ORDER BY test_launch_time desc;", userID, courseID)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -99,7 +99,7 @@ func GetUserSubmitTests(courseID, userID uint32) ([]uint32, error) {
 	for rows.Next() {
 		err := rows.Scan(&testID)
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			continue
 		}
 		results = append(results, testID)
@@ -134,19 +134,19 @@ func GetTestDetailsByIDs(testIDs []uint32) ([]TestDetail) {
 		var testDetail TestDetail
 		testDetail.ID = testID
 		var saveDir string
-		err := db.QueryRow("SELECT test_launch_time, question_id, language, save_dir FROM oj_db_test.oj_test_run WHERE test_id=?;", testID).Scan(
+		err := db.QueryRow("SELECT test_launch_time, question_id, language, save_dir FROM oj_test_run WHERE test_id=?;", testID).Scan(
 			&testDetail.SubmitTime,
 			&testDetail.QuestionID,
 			&testDetail.Language,
 			&saveDir,
 		)
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			continue
 		}
 		// read question details
 		var testCaseNum uint32 
-		err = db.QueryRow("SELECT question_name, question_score, question_test_ac_num, question_test_total_num, question_testcase_num FROM oj_db_test.oj_question WHERE question_id=?;", testDetail.QuestionID).Scan(
+		err = db.QueryRow("SELECT question_name, question_score, question_test_ac_num, question_test_total_num, question_testcase_num FROM oj_question WHERE question_id=?;", testDetail.QuestionID).Scan(
 			&testDetail.Name,
 			&testDetail.TotalScore,
 			&testDetail.PassSubmission,
@@ -154,20 +154,20 @@ func GetTestDetailsByIDs(testIDs []uint32) ([]TestDetail) {
 			&testCaseNum,
 		)
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			continue
 		}
 		// read file sizes
 		fileSize, err := utils.GetDirSize(saveDir)
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			continue
 		}
 		testDetail.FileSize = fmt.Sprintf("%d B", fileSize)
 		// read test-run results
-		rows, err := db.Query("SELECT testcase_run_id, testcase_run_state, testcase_run_time_elapsed, testcase_run_memory_usage FROM oj_db_test.oj_testcase_run WHERE test_id=? ORDER BY testcase_rank ASC;", testID)
+		rows, err := db.Query("SELECT testcase_run_id, testcase_run_state, testcase_run_time_elapsed, testcase_run_memory_usage FROM oj_testcase_run WHERE test_id=? ORDER BY testcase_rank ASC;", testID)
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			continue
 		}
 		defer rows.Close()
@@ -177,7 +177,7 @@ func GetTestDetailsByIDs(testIDs []uint32) ([]TestDetail) {
 			var testcaseDetail TestCaseDetail
 			err := rows.Scan(&testcaseDetail.ID, &testcaseDetail.State, &testcaseDetail.TimeElasped, &testcaseDetail.MemoryUsage)
 			if err != nil {
-				log.Println(err)
+				logging.Info(err)
 				continue
 			}
 			validCaseCount += 1
@@ -187,7 +187,7 @@ func GetTestDetailsByIDs(testIDs []uint32) ([]TestDetail) {
 			testDetail.TestCases = append(testDetail.TestCases, testcaseDetail)
 		}
 		if validCaseCount != testCaseNum {
-			log.Println("ERROR: test case num DISMATCH between `oj_question` AND `oj_testcase_run`")
+			logging.Info("ERROR: test case num DISMATCH between `oj_question` AND `oj_testcase_run`")
 			continue
 		}
 		testDetail.Score = utils.CeilDivUint32(testDetail.TotalScore * passCount, testCaseNum);

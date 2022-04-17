@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unilab-backend/logging"
 )
 
 const (
@@ -37,10 +37,13 @@ type TestConfig struct {
 }
 
 type TestCaseResult struct {
-	TimeElasped uint32
-	MemoryUsage uint32
-	ExitCode    int
-	RunStatus   uint32
+	TimeElasped   uint32
+	MemoryUsage   uint32
+	ExitCode      int
+	RunStatus     uint32
+	CheckerStatus uint32
+	Accepted      bool
+	CheckerOutput string
 }
 
 type TestResult struct {
@@ -157,7 +160,7 @@ func Subprocess(timeout int, executable string, pwd string, args ...string) Resp
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout+5) * time.Second)
 	defer cancel()
 	cmdarray := append([]string{"-c", fmt.Sprintf("%s && %s", ResourceLimiter, executable)}, args...)
-	log.Println("Exec Command: bash " + strings.Join(cmdarray, " "))
+	logging.Info("Exec Command: bash " + strings.Join(cmdarray, " "))
 	cmd := exec.CommandContext(ctx, "bash", cmdarray...)
 	if pwd != "" {
 		cmd.Dir = pwd
@@ -165,7 +168,7 @@ func Subprocess(timeout int, executable string, pwd string, args ...string) Resp
 	// bash -c ulimit -t 5 && ulimit -v 524288 && ulimit -f 20480 && g++ main.cpp -O2 -o main.exe -fdiagnostics-color=always
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		res.StdErr = err.Error()
 		res.StdOut = ""
 		res.ExitCode = getErrorExitCode(err)
@@ -174,7 +177,7 @@ func Subprocess(timeout int, executable string, pwd string, args ...string) Resp
 	defer stdout.Close()
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		res.StdErr = err.Error()
 		res.StdOut = ""
 		res.ExitCode = getErrorExitCode(err)
@@ -184,7 +187,7 @@ func Subprocess(timeout int, executable string, pwd string, args ...string) Resp
 	cmd.Start()
 	outContent, err := ioutil.ReadAll(stdout)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		res.StdErr = err.Error()
 		res.StdOut = ""
 		res.ExitCode = getErrorExitCode(err)
@@ -193,7 +196,7 @@ func Subprocess(timeout int, executable string, pwd string, args ...string) Resp
 	}
 	errContent, err := ioutil.ReadAll(stderr)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		res.StdErr = err.Error()
 		res.StdOut = ""
 		res.ExitCode = getErrorExitCode(err)
@@ -202,7 +205,7 @@ func Subprocess(timeout int, executable string, pwd string, args ...string) Resp
 	}
 	err = cmd.Wait()
 	if err != nil {
-		log.Println(err, string(outContent), string(errContent))
+		logging.Info(err, string(outContent), string(errContent))
 		res.StdErr = err.Error()
 		res.StdOut = ""
 		res.ExitCode = getErrorExitCode(err)
@@ -235,8 +238,8 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	// create temp directory
 	tempDirName, err := ioutil.TempDir("", "*")
 	tempDirName = filepath.ToSlash(tempDirName)
-	tempdir_in_linux := strings.Replace(tempDirName, "C:", "/mnt/c", -1)
-	log.Println("create temp directory: ", tempDirName)
+	// tempdir_in_linux := strings.Replace(tempDirName, "C:", "/mnt/c", -1)
+	logging.Info("create temp directory: ", tempDirName)
 	if err != nil {
 		result.ExtraResult = err.Error()
 		return result
@@ -257,7 +260,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	files, err := ioutil.ReadDir(tempDirName)
 	// var haveMakeFile bool = false
 	for _, file := range files {
-		log.Println(file.Name())
+		logging.Info(file.Name())
 		// if strings.ToLower(file.Name()) == "makefile" {
 		// 	haveMakeFile = true
 		// 	break
@@ -265,9 +268,9 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	}
 	cmd := "g++ main.cpp -O2 -o main.exe -fdiagnostics-color=always"
 	response := Subprocess(30, cmd, tempDirName)
-	log.Println(response)
+	logging.Info(response)
 	if response.ExitCode != 0 {
-		log.Println("Compile Error: ", response.StdErr)
+		logging.Info("Compile Error: ", response.StdErr)
 		result.CompileResult = response.StdErr
 		return result
 	}
@@ -275,31 +278,36 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	// run testcase
 	for i := 1; i <= int(cfg.TestCaseNum); i++ {
 		response = Subprocess(
-			30, "prebuilt/uoj_run", "",
+			30, "./prebuilt/uoj_run.exe", "",
 			fmt.Sprintf("--tl=%d", cfg.TimeLimit),
 			fmt.Sprintf("--rtl=%d", cfg.TimeLimit + 1000),
 			fmt.Sprintf("--ml=%d", cfg.MemoryLimit),
 			fmt.Sprintf("--ol=%d", (64 * 1024)),
 			fmt.Sprintf("--sl=%d", (64 * 1024)),
 			fmt.Sprintf("--work-path=."),
-			fmt.Sprintf("--res=%s", path.Join(tempdir_in_linux, "run_res.txt")),
+			fmt.Sprintf("--res=%s", path.Join(tempDirName, "run_res.txt")),
 			fmt.Sprintf("--err=%s", "/dev/stdout"),
-			fmt.Sprintf("--in=%s", path.Join(tempdir_in_linux, fmt.Sprintf("%d.in", i))),
-			fmt.Sprintf("--out=%s", path.Join(tempdir_in_linux, fmt.Sprintf("%d.out", i))),
-			fmt.Sprintf("--err=%s", path.Join(tempdir_in_linux, fmt.Sprintf("%d.err", i))),
-			path.Join(tempdir_in_linux, "main.exe"),
+			fmt.Sprintf("--in=%s", path.Join(tempDirName, fmt.Sprintf("%d.in", i))),
+			fmt.Sprintf("--out=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
+			fmt.Sprintf("--err=%s", path.Join(tempDirName, fmt.Sprintf("%d.err", i))),
+			path.Join(tempDirName, "main.exe"),
 		)
-		log.Println("Testcase ", i, " Response: ", response)
+		logging.Info("Testcase ", i, " Response: ", response)
 		// fill-in results
 		var test_case_result TestCaseResult
 		run_res, _ := ioutil.ReadFile(path.Join(tempDirName, "run_res.txt"))
-		log.Println("Run result: ", string(run_res))
+		logging.Info("Run result: ", string(run_res))
 		run_res_arr := strings.Fields(string(run_res))
+		var success bool = true
+		test_case_result.Accepted = false
+		test_case_result.CheckerOutput = ""
 		if len(run_res_arr) == 0 {
+			logging.Info("No Output in file run_res.txt")
 			test_case_result.RunStatus = 7
 			test_case_result.TimeElasped = 0
 			test_case_result.MemoryUsage = 0
 			test_case_result.ExitCode = 1
+			success = false
 		} else {
 			run_status, _ := strconv.ParseUint(run_res_arr[0], 10, 32)
 			time_elasped, _ := strconv.ParseUint(run_res_arr[1], 10, 32)
@@ -309,6 +317,45 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 			test_case_result.TimeElasped = uint32(time_elasped)
 			test_case_result.MemoryUsage = uint32(memory_usage)
 			test_case_result.ExitCode = int(exit_code)
+			success = (run_status == 0)
+		}
+		// check .ans and .out
+		if success {
+			response = Subprocess(
+				30, "./prebuilt/uoj_run.exe", "",
+				fmt.Sprintf("--tl=%d", (5 * 1000)),
+				fmt.Sprintf("--rtl=%d", (10 * 1000)),
+				fmt.Sprintf("--ml=%d", (512 * 1024)),
+				fmt.Sprintf("--ol=%d", (64 * 1024)),
+				fmt.Sprintf("--sl=%d", (64 * 1024)),
+				fmt.Sprintf("--work-path=."),
+				fmt.Sprintf("--res=%s", path.Join(tempDirName, "spj_run_res.txt")),
+				fmt.Sprintf("--err=%s", "/dev/stdout"),
+				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.in", i))),
+				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
+				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.ans", i))),
+				path.Join(tempDirName, "prebuilt/fcmp.exe"),
+				path.Join(tempDirName, fmt.Sprintf("%d.in", i)),
+				path.Join(tempDirName, fmt.Sprintf("%d.out", i)),
+				path.Join(tempDirName, fmt.Sprintf("%d.ans", i)),
+			)
+			if response.ExitCode != 0 {
+				test_case_result.CheckerStatus = 7
+			} else {
+				spj_run_res, _ := ioutil.ReadFile(path.Join(tempDirName, "spj_run_res.txt"))
+				logging.Info("Judger Run result: ", string(spj_run_res))
+				spj_run_res_arr := strings.Fields(string(spj_run_res))
+				if len(spj_run_res_arr) == 0 {
+					logging.Info("No Output in file spj_run_res.txt")
+					test_case_result.CheckerStatus = 7
+				} else {
+					checker_status, _ := strconv.ParseUint(spj_run_res_arr[0], 10, 32)
+					test_case_result.CheckerStatus = uint32(checker_status)
+					// parse checker output
+					test_case_result.Accepted = (response.StdOut[:3] == "ok ")
+					test_case_result.CheckerOutput = response.StdOut
+				}
+			}
 		}
 		result.RunResults = append(result.RunResults, test_case_result)
 	}

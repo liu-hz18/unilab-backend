@@ -2,10 +2,11 @@ package database
 
 import (
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"time"
+	"unilab-backend/logging"
+	"unilab-backend/setting"
 )
 
 type CreateAnnouncementForm struct {
@@ -33,10 +34,10 @@ func CreateNewAnnouncement(announcementForm CreateAnnouncementForm) (uint32, err
 		if tx != nil {
 			_ = tx.Rollback()
 		}
-		log.Printf("CreateNewAnnouncement() begin trans action failed: %v", err)
+		logging.Info("CreateNewAnnouncement() begin trans action failed: ", err)
 	}
 	// insert new announcement
-	result, err := tx.Exec(`INSERT INTO oj_db_test.oj_announcement
+	result, err := tx.Exec(`INSERT INTO oj_announcement
 		(announcement_title, issue_time, course_id)
 		VALUES
 		(?, ?, ?)
@@ -47,18 +48,18 @@ func CreateNewAnnouncement(announcementForm CreateAnnouncementForm) (uint32, err
 	)
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	// get announcement id
 	announcement_id, err := result.LastInsertId()
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	_ = tx.Commit()
-	log.Println("CreateNewAnnouncement() commit trans action successfully. ID: ", announcement_id)
+	logging.Info("CreateNewAnnouncement() commit trans action successfully. ID: ", announcement_id)
 	return uint32(announcement_id), nil
 }
 
@@ -70,13 +71,13 @@ func GetAnnouncementsByCourseID(course_id uint32) ([]Announcement, error) {
 		if tx != nil {
 			_ = tx.Rollback()
 		}
-		log.Printf("GetAnnouncementsByCourseID() begin trans action failed, err:%v\n", err)
+		logging.Info("GetAnnouncementsByCourseID() begin trans action failed, err: ", err)
 		return nil, err
 	}
-	res, err := tx.Query("SELECT announcement_id, announcement_title, issue_time FROM oj_db_test.oj_announcement WHERE course_id=?;", course_id)
+	res, err := tx.Query("SELECT announcement_id, announcement_title, issue_time FROM oj_announcement WHERE course_id=?;", course_id)
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return nil, err
 	}
 	defer res.Close()
@@ -86,13 +87,13 @@ func GetAnnouncementsByCourseID(course_id uint32) ([]Announcement, error) {
 		err := res.Scan(&announcement.ID, &announcement.Title, &announcement.IssueTime)
 		if err != nil {
 			_ = tx.Rollback()
-			log.Println(err)
+			logging.Info(err)
 			return nil, err
 		}
 		announcements = append(announcements, announcement)
 	}
 	_ = tx.Commit()
-	log.Printf("GetAnnouncementsByCourseID() commit trans action successfully.")
+	logging.Info("GetAnnouncementsByCourseID() commit trans action successfully.")
 	return announcements, nil
 }
 
@@ -105,13 +106,13 @@ func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 		if tx != nil {
 			_ = tx.Rollback()
 		}
-		log.Printf("GetAnnouncementInfo() begin trans action failed, err:%v\n", err)
+		logging.Info("GetAnnouncementInfo() begin trans action failed, err: ", err)
 		return info, err
 	}
 	var course_id uint32
 	// read database
 	var issue_time time.Time
-	err = tx.QueryRow("SELECT announcement_title, course_id, issue_time FROM oj_db_test.oj_announcement WHERE announcement_id=?;",
+	err = tx.QueryRow("SELECT announcement_title, course_id, issue_time FROM oj_announcement WHERE announcement_id=?;",
 		annoid,
 	).Scan(
 		&info.Title,
@@ -120,40 +121,40 @@ func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 	)
 	info.IssueTime = issue_time.Format("2006/01/02 15:04")
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return info, err
 	}
 	var course_name string
-	err = tx.QueryRow("SELECT course_name FROM oj_db_test.oj_course WHERE course_id=?;", course_id).Scan(&course_name)
+	err = tx.QueryRow("SELECT course_name FROM oj_course WHERE course_id=?;", course_id).Scan(&course_name)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return info, err
 	}
 	// read disk
-	file_path := COURSE_DATA_DIR + strconv.FormatUint(uint64(course_id), 10) + "_" + course_name + "/announcements/"+ strconv.FormatUint(uint64(annoid), 10) + "_announcement.md"
+	file_path := setting.CourseRootDir + strconv.FormatUint(uint64(course_id), 10) + "_" + course_name + "/announcements/"+ strconv.FormatUint(uint64(annoid), 10) + "_announcement.md"
 	f, err := os.Open(file_path)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return info, err
 	}
 	defer f.Close()
  	content, err := ioutil.ReadAll(f)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return info, err
 	}
 	info.Content = string(content)
 	_ = tx.Commit()
-	log.Printf("GetAnnouncementInfo() commit trans action successfully.")
+	logging.Info("GetAnnouncementInfo() commit trans action successfully.")
 	return info, nil
 }
 
 
 func CheckAnnouncementAccessPermission(annoID, userID uint32) bool {
 	var course_id uint32
-	err := db.QueryRow("SELECT course_id FROM oj_db_test.oj_announcement WHERE announcement_id=?;", annoID).Scan(&course_id)
+	err := db.QueryRow("SELECT course_id FROM oj_announcement WHERE announcement_id=?;", annoID).Scan(&course_id)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return false;
 	}
 	return CheckCourseAccessPermission(course_id, userID)

@@ -1,7 +1,6 @@
 package apis
 
 import (
-	"log"
 	"net/http"
 	"unilab-backend/database"
 
@@ -17,7 +16,7 @@ func GetAllUsersHandler(c *gin.Context) {
 		code = ERROR
 		data["err"] = err.Error()
 	}
-	log.Printf("fetch %d rows from oj_user in GetAllUsersHandler()", len(userinfos))
+	// logging.Info("fetch %d rows from oj_user in GetAllUsersHandler()", len(userinfos))
 	data["result"] = userinfos
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
@@ -34,7 +33,7 @@ func GetAllTeachersHandler(c *gin.Context) {
 		code = ERROR
 		data["err"] = err.Error()
 	}
-	log.Printf("fetch %d rows from oj_user in GetAllTeachersHandler()", len(userinfos))
+	// logging.Info("fetch %d rows from oj_user in GetAllTeachersHandler()", len(userinfos))
 	data["result"] = userinfos
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,

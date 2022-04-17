@@ -2,10 +2,11 @@ package database
 
 import (
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"time"
+	"unilab-backend/logging"
+	"unilab-backend/setting"
 	"unilab-backend/utils"
 )
 
@@ -57,10 +58,10 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 		if tx != nil {
 			_ = tx.Rollback()
 		}
-		log.Printf("CreateQuestion() begin trans action failed: %v", err)
+		logging.Info("CreateQuestion() begin trans action failed: %v", err)
 	}
 	// insert a new question
-	result, err := tx.Exec(`INSERT INTO oj_db_test.oj_question
+	result, err := tx.Exec(`INSERT INTO oj_question
 		(question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_compile_options, question_test_total_num, question_test_ac_num, issue_time)
 		VALUES
 		(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
@@ -80,18 +81,18 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 	)
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	// get announcement id
 	question_id, err := result.LastInsertId()
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	// oj_question_course
-	_, err = tx.Exec(`INSERT INTO oj_db_test.oj_question_course
+	_, err = tx.Exec(`INSERT INTO oj_question_course
 		(question_id, course_id)
 		VALUES
 		(?, ?)
@@ -101,19 +102,19 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 	)
 	if err != nil {
 		_ = tx.Rollback()
-		log.Println(err)
+		logging.Info(err)
 		return 0, err
 	}
 	_ = tx.Commit()
-	log.Println("CreateQuestion() commit trans action successfully. ID: ", question_id)
+	logging.Info("CreateQuestion() commit trans action successfully. ID: ", question_id)
 	return uint32(question_id), nil
 }
 
 
 func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
-	res, err := db.Query("SELECT question_id FROM oj_db_test.oj_question_course WHERE course_id=?;", courseID)
+	res, err := db.Query("SELECT question_id FROM oj_question_course WHERE course_id=?;", courseID)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return nil, err
 	}
 	defer res.Close()
@@ -122,11 +123,11 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 		var question Question
 		err := res.Scan(&question.ID)
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			return nil, err
 		}
 		var userid uint32
-		err = db.QueryRow("SELECT question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_test_total_num, question_test_ac_num, issue_time FROM oj_db_test.oj_question WHERE question_id=?;", question.ID).Scan(
+		err = db.QueryRow("SELECT question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_test_total_num, question_test_ac_num, issue_time FROM oj_question WHERE question_id=?;", question.ID).Scan(
 			&question.Title,
 			&question.Tag,
 			&userid,
@@ -140,25 +141,25 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 			&question.IssueTime,
 		)
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			return nil, err
 		}
 		username, err := GetUserName(strconv.FormatUint(uint64(userid), 10))
 		if err != nil {
-			log.Println(err)
+			logging.Info(err)
 			return nil, err
 		}
 		question.Creator = username
 		questions = append(questions, question)
 	}
-	log.Println("GetQuestionsByCourseID() commit trans action successfully.")
+	logging.Info("GetQuestionsByCourseID() commit trans action successfully.")
 	return questions, nil
 }
 
 func GetQuestionTitleAndTestCaseNumByID(questionID uint32) (string, uint32, error) {
 	var title string
 	var num uint32
-	err := db.QueryRow("SELECT question_name, question_testcase_num FROM oj_db_test.oj_question WHERE question_id=?;", questionID).Scan(&title, &num)
+	err := db.QueryRow("SELECT question_name, question_testcase_num FROM oj_question WHERE question_id=?;", questionID).Scan(&title, &num)
 	return title, num, err
 }
 
@@ -167,7 +168,7 @@ func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {
 	var userid uint32
 	var issue_time time.Time
 	question.ID = 0
-	err := db.QueryRow("SELECT question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_test_total_num, question_test_ac_num, issue_time FROM oj_db_test.oj_question WHERE question_id=?;", questionID).Scan(
+	err := db.QueryRow("SELECT question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_test_total_num, question_test_ac_num, issue_time FROM oj_question WHERE question_id=?;", questionID).Scan(
 		&question.Title,
 		&question.Tag,
 		&userid,
@@ -181,28 +182,28 @@ func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {
 		&issue_time,
 	)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return question, err
 	}
 	username, err := GetUserName(strconv.FormatUint(uint64(userid), 10))
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return question, err
 	}
 	question.Creator = username
 	question.IssueTime = issue_time.Format("2006/01/02 15:04")
-	log.Println(question)
+	logging.Info(question)
 	// read description from disk
-	files_dir := QUESTION_DATA_DIR + strconv.FormatUint(uint64(questionID), 10) + "_" + question.Title + "/"
+	files_dir := setting.QuestionRootDir + strconv.FormatUint(uint64(questionID), 10) + "_" + question.Title + "/"
 	f, err := os.Open(files_dir + "description.md")
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return question, err
 	}
 	defer f.Close()
  	content, err := ioutil.ReadAll(f)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return question, err
 	}
 	question.Content = string(content)

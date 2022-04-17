@@ -1,12 +1,13 @@
 package apis
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"unilab-backend/database"
+	"unilab-backend/logging"
+	"unilab-backend/setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,11 +17,11 @@ func CreateAnnouncementHandler(c *gin.Context) {
 	// validate params
 	var postform database.CreateAnnouncementForm
 	if err := c.ShouldBind(&postform); err != nil {
-		log.Println(err)
+		logging.Info(err)
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	log.Println(postform)
+	logging.Info(postform)
 	if !database.CheckCourseAccessPermission(postform.CourseID, c.MustGet("user_id").(uint32)) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return
@@ -38,7 +39,7 @@ func CreateAnnouncementHandler(c *gin.Context) {
 		return
 	}
 	// save file to disk
-	base_path := database.COURSE_DATA_DIR + strconv.FormatUint(uint64(postform.CourseID), 10) + "_" + course_name + "/announcements/"
+	base_path := setting.CourseRootDir + strconv.FormatUint(uint64(postform.CourseID), 10) + "_" + course_name + "/announcements/"
 	err = os.MkdirAll(base_path, 777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
@@ -57,7 +58,7 @@ func CreateAnnouncementHandler(c *gin.Context) {
 	}
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
-		log.Println("receive file: ", filename)
+		logging.Info("receive file: ", filename)
 		dst := base_path + strconv.FormatUint(uint64(announcement_id), 10) + "_announcement.md"
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())

@@ -1,9 +1,9 @@
 package apis
 
 import (
-	"log"
 	"net/http"
 	"unilab-backend/database"
+	"unilab-backend/logging"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,7 @@ func AddTeachersHandler(c *gin.Context) {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	} else {
-		log.Println(form)
+		logging.Info(form)
 		if len(form) == 0 {
 			ErrorResponse(c, INVALID_PARAMS, "Added teachers are none.")
 			return

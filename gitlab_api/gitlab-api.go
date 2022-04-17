@@ -3,12 +3,12 @@ package gitlab_api
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"unilab-backend/auth"
+	"unilab-backend/logging"
 )
 
 
@@ -55,8 +55,8 @@ func Get_project_info(project_name string, userid string, accessToken string) (s
 		return "", "", ""
 	}
 	project := projects[0]
-	// fmt.Println("id: ",projects["id"])
-	// fmt.Println("name: ",projects["name"])
+	logging.Info("id: ", int(project["id"].(float64)))
+	logging.Info("name: ", project["name"].(string))
 	return strconv.Itoa(int(project["id"].(float64))),project["name"].(string),project["name_with_namespace"].(string)
 }
 
@@ -70,21 +70,22 @@ func Get_pipelines_info(project_id string, branch string, userid string, accessT
 	data := make(map[string]string)
 	data["ref"]=branch
 	pipelines,_ :=get("/projects/"+project_id+"/pipelines", data, userid, accessToken)
-	// fmt.Print(pipelines)
+	// logging.Info(pipelines)
 	return pipelines
 }
 
 func Get_pipeline_jobs_info(project_id string, pipeline_id string, userid string, accessToken string)[]map[string]interface{}{ 
 	data := make(map[string]string)
 	jobs,_ :=get("/projects/"+project_id+"/pipelines/"+pipeline_id+"/jobs",data, userid, accessToken)
+	// logging.Info(jobs)
 	return jobs
 }
 
 func Get_job_trace(project_id string, job_id string, userid string, accessToken string) string{
 	data := make(map[string]string)
-	fmt.Println("/projects/"+project_id+"/jobs/"+job_id+"/trace")
+	logging.Info("/projects/"+project_id+"/jobs/"+job_id+"/trace")
 	_,trace :=get("/projects/"+project_id+"/jobs/"+job_id+"/trace", data, userid, accessToken)
-	// fmt.Println(trace)
+	// logging.Info(trace)
 	return string(trace)
 }
 
@@ -93,7 +94,7 @@ func Get_project_traces(project_name string, userid string, access_token string)
 	if id == "" {
 		return ""
 	}
-	// fmt.Println(id)
+	logging.Info(id)
 	// branches:=Get_branches(id)
 	// for _,branch :=range branches{
 	// 	fmt.Println(branch["name"])
@@ -104,7 +105,7 @@ func Get_project_traces(project_name string, userid string, access_token string)
 	pipline := strconv.Itoa(int(pipelines[0]["id"].(float64)))
 	jobs := Get_pipeline_jobs_info(id,pipline, userid, access_token)
 	job := strconv.Itoa(int(jobs[0]["id"].(float64)))
-	fmt.Println(job)
+	// logging.Info(job)
 	trace := Get_job_trace(id ,job, userid, access_token)
 	return trace
 }

@@ -1,7 +1,6 @@
 package apis
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +8,7 @@ import (
 
 	"unilab-backend/database"
 	"unilab-backend/jwt"
+	"unilab-backend/logging"
 )
 
 // login router
@@ -27,14 +27,14 @@ var permissionMap = map[uint8]string{
 func UserLoginHandler(c *gin.Context) {
 	userid := c.PostForm("userid")
 	password := c.PostForm("password")
-	log.Printf("user id: %s, password: %s", userid, password)
+	logging.Info("user id: ", userid,  ", password: ", password)
 	validator := validator.New()
 	loginInfo := login{userid: userid, password:password}
 	err := validator.Struct(&loginInfo)
 	code := INVALID_PARAMS
 	data := make(map[string]interface{})
 	if err != nil { // code = INVALID_PARAMS
-		log.Println(err)
+		logging.Info(err)
 		data["err"] = err.Error()
 	} else {
 		// 加上gitlab验证 ?
@@ -43,7 +43,7 @@ func UserLoginHandler(c *gin.Context) {
 		if existed && err == nil {
 			token, err := jwt.TokenGenerator(userid, password)
 			if err != nil {
-				log.Println(err)
+				logging.Info(err)
 				code = ERROR_AUTH_TOKEN
 				data["err"] = err.Error()
 			} else {
@@ -53,7 +53,7 @@ func UserLoginHandler(c *gin.Context) {
 				code = SUCCESS
 			}
 		} else {
-			log.Println(err)
+			logging.Info(err)
 			data["err"] = err.Error()
 			code = ERROR_AUTH
 		}

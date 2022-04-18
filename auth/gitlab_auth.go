@@ -3,7 +3,6 @@ package auth
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"unilab-backend/apis"
 	"unilab-backend/database"
 	"unilab-backend/jwt"
+	"unilab-backend/logging"
 
 	// "unilab-backend/database"
 	"github.com/gin-gonic/gin"
@@ -68,12 +68,13 @@ func GitLabCallBackHandler(c *gin.Context){
 	code := c.Query("code")
 	token, err := OauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil{
-		log.Printf("Code exchange failed with '%s'\n", err)
+		logging.Info("Code exchange failed with err: ", err)
 		return
 	}
 	response, err := http.Get(GitLabAPIBaseURL + "/user?access_token=" + token.AccessToken)
+	logging.Info("token: %s\n", token.AccessToken)
 	if err != nil {
-		log.Printf("Get GitLab response failed with '%s'\n", err)
+		logging.Info("Get GitLab response failed with err: ", err)
 		return
 	}
 	defer response.Body.Close()
@@ -82,23 +83,23 @@ func GitLabCallBackHandler(c *gin.Context){
 	// var Userinfo map[string]interface{}
 	var userinfo GitLabResponse
 	err = json.Unmarshal([]byte(content), &userinfo)
-	log.Println("git callback content: ", content)
+	logging.Info("git callback content: ", content)
 	if err != nil {
-		log.Println("error: ", err)
+		logging.Info("error: ", err)
 		return
 	}
 
 	// Generate token
-	log.Printf("%T, %s\n", userinfo.Identities, userinfo.Identities)
+	logging.Info(userinfo.Identities)
 	if len(userinfo.Identities) == 0 {
-		log.Println("Error when parsing gitlab callback contents: len(userinfo.Identities) == 0")
+		logging.Info("Error when parsing gitlab callback contents: len(userinfo.Identities) == 0")
 		return
 	}
 
 	user_id_str := userinfo.Identities[0].UID
 	user_id_int64, err := strconv.ParseUint(user_id_str, 10, 32)
 	if err != nil {
-		log.Println("Error when parsing gitlab callback contents: ", err)
+		logging.Info("Error when parsing gitlab callback contents: ", err)
 		return
 	}
 	user_id := uint32(user_id_int64)
@@ -107,7 +108,7 @@ func GitLabCallBackHandler(c *gin.Context){
 	loginInfo := login{user_name, user_id_str}
 	err = validator.Struct(&loginInfo)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return
 	}
 	// confirm user authority
@@ -129,13 +130,13 @@ func GitLabCallBackHandler(c *gin.Context){
 		err = database.UpdateUserInfo(user_id_str, newUser)
 		// err = database.UpdateUserAccessToken(user_id_str, token.AccessToken)
 		if err != nil {
-			log.Println("error in update user info: ", err)
+			logging.Info("error in update user info: ", err)
 			return
 		}
 	} else {
 		err = database.CreateNewUser(newUser)
 		if err != nil {
-			log.Println("error in create new user: ", err)
+			logging.Info("error in create new user: ", err)
 			return
 		}
 	}
@@ -144,7 +145,7 @@ func GitLabCallBackHandler(c *gin.Context){
 	query := url.Values{}
 	user_type, err := database.GetUserType(user_id_str)
 	if err != nil {
-		log.Println(err)
+		logging.Info(err)
 		return
 	}
 	rettoken, err := jwt.TokenGenerator(user_id_str, user_name)

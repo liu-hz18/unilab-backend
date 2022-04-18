@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"time"
+	"unilab-backend/setting"
 
 	"github.com/golang-jwt/jwt"
 )
@@ -13,7 +14,7 @@ type Claims struct {
 }
 
 // 编解码私钥，在生产环境中，该私钥请使用生成器生成，并妥善保管，此处使用简单字符串
-var jwtSecret = []byte("hello unilab")
+var jwtSecret = []byte(setting.JwtSecret)
 
 func ParseToken(token string) (*Claims, error) {
 	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
@@ -39,7 +40,7 @@ func TokenGenerator(userid, username string) (string, error) {
 			Id:        userid,
 			ExpiresAt: expireTime.Unix(),
 			IssuedAt:  time.Now().Unix(),
-			Issuer:    "gin hello",
+			Issuer:    "unilab hello",
 			NotBefore: time.Now().Unix(), // 生效时间
 			Subject:   "login",
 		},

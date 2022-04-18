@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"unilab-backend/apis"
 	"unilab-backend/database"
 	"unilab-backend/jwt"
+	"unilab-backend/logging"
 )
 
 // JWT 中间件
@@ -24,13 +24,13 @@ func JWTMiddleWare() gin.HandlerFunc {
 		code = apis.SUCCESS
 		// 读取header中的token
 		token := c.Request.Header.Get("Authorization")
-		log.Println(token)
+		logging.Info(token)
 		if token == "" {
 			code = apis.INVALID_PARAMS
 		} else {
 			token = strings.Fields(token)[1]
 			claims, err = jwt.ParseToken(token)
-			log.Println("claims:", claims)
+			logging.Info("claims:", claims)
 			if err != nil {
 				code = apis.ERROR_AUTH_CHECK_TOKEN_FAIL
 				data["err"] = err.Error()
@@ -53,7 +53,7 @@ func JWTMiddleWare() gin.HandlerFunc {
 		if err != nil {
 			code = apis.ERROR
 			data["err"] = err.Error()
-			log.Println("JWTMiddleWare", err.Error())
+			logging.Info("JWTMiddleWare", err.Error())
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code": code,
 				"msg": apis.MsgFlags[code],

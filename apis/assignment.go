@@ -1,10 +1,10 @@
 package apis
 
 import (
-	"log"
 	"net/http"
 	"time"
 	"unilab-backend/database"
+	"unilab-backend/logging"
 	"unilab-backend/utils"
 
 	"github.com/gin-gonic/gin"
@@ -14,11 +14,11 @@ import (
 func CreateAssignmentHandler(c *gin.Context) {
 	var postform database.CreateAssignmentForm
 	if err := c.ShouldBind(&postform); err != nil {
-		log.Println(err)
+		logging.Info(err)
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	log.Println(postform)
+	logging.Info(postform)
 	if !database.CheckCourseAccessPermission(postform.CourseID, c.MustGet("user_id").(uint32)) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return

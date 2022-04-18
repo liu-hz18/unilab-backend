@@ -1,16 +1,18 @@
 package main
 
 import (
-	"log"
+	"fmt"
+	"net/http"
 
 	"unilab-backend/apis"
 	"unilab-backend/auth"
 	"unilab-backend/database"
 	"unilab-backend/judger"
+	"unilab-backend/logging"
 	"unilab-backend/middleware"
 	"unilab-backend/os"
 	"unilab-backend/taskqueue"
-	// "unilab-backend/os-server"
+	"unilab-backend/setting"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,30 +26,32 @@ func testJudger() {
 		[]uint32{10, 10, 10},
 	}
 	result := judger.LaunchTest(config, "../testcase", "../program")
-	log.Println(result)
+	logging.Info(result)
 }
 
 
-func main() {
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	database.InitDB()
-	taskqueue.InitYTaskServer()
-	// OsServer.InitConsumer()
-	// database.PreinitDBTestData()
+	// log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	router := gin.Default()
+	// database.InitDB()
+	// taskqueue.InitYTaskServer()
+	// // OsServer.InitConsumer()
+	// // database.PreinitDBTestData()
+
+	// router := gin.Default()
+func initRouter() *gin.Engine {
+	router := gin.New()
 	// Set a lower memory limit for multipart forms (default is 32 MiB)
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	gin.SetMode(gin.DebugMode)
-	// gin.SetMode(gin.ReleaseMode)
 
 	// cross-origin routes
 	router.Use(middleware.Cors())
 
-
+	router.GET("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "hello World!")
+	})
 	// Routes
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.GET("/login", auth.UserLoginHandler)
@@ -86,7 +90,28 @@ func main() {
 		adminApis.POST("/add-teachers", apis.AddTeachersHandler)
 	}
 
-	router.Run(":1323")
+	return router
+}
+
+
+func main() {
+	logging.Info("Start Golang App")
+	database.InitDB()
+	// database.PreinitDBTestData()
+	gin.SetMode(setting.RunMode)
+	router := initRouter()
+	endPoint := fmt.Sprintf(":%d", setting.HttpPort)
+	maxHeaderBytes := 1 << 20
+	
+	server := &http.Server{
+		Addr: endPoint,
+		Handler: router,
+		ReadTimeout: setting.ReadTimeout,
+		WriteTimeout: setting.WriteTimeout,
+		MaxHeaderBytes: maxHeaderBytes,
+	}
+	logging.Info("start http server listening ", endPoint)
+	server.ListenAndServe()
 
 	// testJudger()
 }

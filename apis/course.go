@@ -1,10 +1,10 @@
 package apis
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 	"unilab-backend/database"
+	"unilab-backend/logging"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,19 +45,19 @@ func CreateCourseHandler(c *gin.Context) {
 	code := SUCCESS
 	if err := c.ShouldBind(&courseForm); err != nil {
 		code = INVALID_PARAMS
-		log.Println(err)
+		logging.Info(err)
 		data["err"] = err.Error()
 	} else {
-		log.Println(courseForm)
+		logging.Info(courseForm)
 		if len(courseForm.Teachers) == 0 || len(courseForm.Students) == 0 {
 			data["err"] = "Course's teachers or students are none."
-			log.Println(data["err"])
+			logging.Info(data["err"])
 		} else {
 			// insert into database
 			err := database.CreateNewCourse(courseForm)
 			if err != nil {
 				data["err"] = err.Error()
-				log.Println(err)
+				logging.Info(err)
 			}
 		}
 	}

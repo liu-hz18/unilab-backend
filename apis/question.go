@@ -2,12 +2,13 @@ package apis
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"unilab-backend/database"
+	"unilab-backend/logging"
+	"unilab-backend/setting"
 	"unilab-backend/utils"
 
 	"github.com/gin-gonic/gin"
@@ -17,11 +18,11 @@ import (
 func CreateQuestionHandler(c *gin.Context) {
 	var postform database.CreateQuestionForm
 	if err := c.ShouldBind(&postform); err != nil {
-		log.Println(err)
+		logging.Info(err)
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	log.Println(postform)	
+	logging.Info(postform)	
 	if !database.CheckCourseAccessPermission(postform.CourseID, c.MustGet("user_id").(uint32)) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return
@@ -64,7 +65,7 @@ func CreateQuestionHandler(c *gin.Context) {
 		return
 	}
 	// save file to disk
-	question_base_path := database.QUESTION_DATA_DIR + strconv.FormatUint(uint64(question_id), 10) + "_" + postform.Title + "/"
+	question_base_path := setting.QuestionRootDir + strconv.FormatUint(uint64(question_id), 10) + "_" + postform.Title + "/"
 	err = os.MkdirAll(question_base_path, 777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
@@ -74,7 +75,7 @@ func CreateQuestionHandler(c *gin.Context) {
 	files := form.File["description"]
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
-		log.Println("receive file: ", filename)
+		logging.Info("receive file: ", filename)
 		dst := question_base_path + "description.md"
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
@@ -85,7 +86,7 @@ func CreateQuestionHandler(c *gin.Context) {
 	appendix := form.File["appendix"]
 	for _, file := range appendix {
 		filename := filepath.Base(file.Filename)
-		log.Println("receive file: ", filename)
+		logging.Info("receive file: ", filename)
 		dst := question_base_path + "appendix.zip"
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
@@ -95,7 +96,7 @@ func CreateQuestionHandler(c *gin.Context) {
 	}
 	for _, file := range testcase {
 		filename := filepath.Base(file.Filename)
-		log.Println("receive file: ", filename)
+		logging.Info("receive file: ", filename)
 		dst := question_base_path + filename
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())

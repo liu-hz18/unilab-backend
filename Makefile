@@ -1,9 +1,17 @@
 DB_USER=root
 DB_PASSWORD=123456
 DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_PORT=3307
 
-.PHONY: build_db
+APP_MOUNT_DIR=d/unilab-backend-mount
+APP_INNER_DIR=/unilab-files
+
+MYSQL_MOUNT_DIR=d/mysql-docker
+MYSQL_INNER_DIR=/var/lib/mysql
+
+EXPOSE_PORT=1323
+
+.PHONY: mysql build-db build-table drop-db check lint clean dev-build-local dev-run-local build-local run-local build-docker dev-run-docker run-docker
 
 build-db:
 	mysql -h $(DB_HOST) -P $(DB_PORT) -u $(DB_USER) -p$(DB_PASSWORD) < ./mysql/create_db.sql 
@@ -24,11 +32,29 @@ lint:
 clean:
 	go clean -i .
 
-build:
-	go build -v -o main.exe .
+# local (develop)
+dev-build-local: drop-db build-db build-table
 
-dev-run: drop-db build-db build-table
+dev-run-local: 
 	go run main.go
 
-run: build-db build-table build
-	./main.exe
+# local (release)
+build-local: build-db build-table
+	go build -v -o main .
+
+run-local: 
+	./main
+
+# docker deploy
+mysql:
+	docker pull mysql:latest
+	docker run --name mysql -p $(DB_PORT):3306 -e MYSQL_ROOT_PASSWORD=$(DB_PASSWORD) -v $(MYSQL_MOUNT_DIR):$(MYSQL_INNER_DIR) -d mysql
+
+build-docker:
+	docker build -t unilab-backend-docker .
+
+dev-run-docker: drop-db build-db build-table
+	docker run --name unilab-backend --link mysql:mysql -p $(EXPOSE_PORT):$(EXPOSE_PORT) -v $(APP_MOUNT_DIR):$(APP_INNER_DIR) -d unilab-backend-docker 
+
+run-docker: build-db build-table
+	docker run --name unilab-backend --link mysql:mysql -p $(EXPOSE_PORT):$(EXPOSE_PORT) -v $(APP_MOUNT_DIR):$(APP_INNER_DIR) -d unilab-backend-docker 

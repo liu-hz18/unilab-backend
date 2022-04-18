@@ -102,7 +102,7 @@ func UpdateUserInfo(userid string, info CreateUser) error {
 func GetUserAccessToken(userid string) (string, error) {
 	var access_token string
 	err := db.QueryRow("SELECT user_token from oj_user where user_id=?;", userid).Scan(&access_token)
-	logging.Info("GetUserAccessToken()", userid, access_token)
+	// logging.Info("GetUserAccessToken()", userid, access_token)
 	return access_token, err
 }
 
@@ -120,7 +120,7 @@ func CheckUserExist(userid string) bool {
 func GetUserType(userid string) (uint8, error) {
 	var user_type_db uint8
 	err := db.QueryRow("SELECT user_type from oj_user where user_id=?;", userid).Scan(&user_type_db)
-	logging.Info("GetUserType()", userid, user_type_db)
+	// logging.Info("GetUserType()", userid, user_type_db)
 	return user_type_db, err
 }
 

@@ -24,7 +24,7 @@ func JWTMiddleWare() gin.HandlerFunc {
 		code = apis.SUCCESS
 		// 读取header中的token
 		token := c.Request.Header.Get("Authorization")
-		logging.Info(token)
+		// logging.Info(token)
 		if token == "" {
 			code = apis.INVALID_PARAMS
 		} else {

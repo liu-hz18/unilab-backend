@@ -1,25 +1,36 @@
 # Unilab-backend
 
-### Prepare
+### Modify Configs
+
+see `./conf.ini`
+
+### Local Prepare
 
 ```
 mysql
 golang
 ```
-
-### Modify Configs
-
-see `./conf.ini`
-
-### Develop Run
+### Local Develop Run
 
 ```
-make dev-run
+make dev-build-local
+make dev-run-local
 ```
 
-### Release Run
+### Local Release Run
 
 ```
-make run
+make build-local
+make run-local
+```
+
+### Deploy using Docker
+
+First please modify `APP_MOUNT_DIR` and `MYSQL_MOUNT_DIR` in `Makefile` according to your file system.
+
+```
+make mysql  # if needed
+make build-docker
+make run-docker  # in develop mode, run `make dev-run-docker`
 ```
 

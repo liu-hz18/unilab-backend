@@ -11,6 +11,7 @@ import (
 	"unilab-backend/database"
 	"unilab-backend/jwt"
 	"unilab-backend/logging"
+	"unilab-backend/setting"
 
 	// "unilab-backend/database"
 	"github.com/gin-gonic/gin"
@@ -18,8 +19,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const FrontEndBaseURL string = "http://localhost:8080"
-const BackEndBaseURL string = "http://localhost:1323"
 const GitLabAPIBaseURL = "https://git.tsinghua.edu.cn/api/v4"
 
 var endpoint = oauth2.Endpoint{
@@ -30,7 +29,7 @@ var endpoint = oauth2.Endpoint{
 var OauthConfig = &oauth2.Config{
     ClientID:     "e635224e0544e1d040525509adac08252870403490ece857ee1a6e7afe998b3d",
     ClientSecret: "3ca8ecf6e80c01ff6d5f31310220bfc27178a3742285255064e3abb33a53a0b4",
-    RedirectURL:  BackEndBaseURL + "/callback",
+    RedirectURL:  setting.BackEndBaseURL + "/callback",
     Scopes:       []string{"read_user", "read_api", "read_repository"},
     Endpoint:     endpoint,
 }
@@ -159,5 +158,5 @@ func GitLabCallBackHandler(c *gin.Context){
 		query.Add("userid", user_id_str)
 	}
 	query.Add("code", strconv.Itoa(retcode))
-	c.Redirect(http.StatusTemporaryRedirect, FrontEndBaseURL + "/login?" + query.Encode())
+	c.Redirect(http.StatusTemporaryRedirect, setting.FrontEndBaseUrl + "/login?" + query.Encode())
 }

@@ -18,6 +18,9 @@ var (
 	QuestionRootDir string
 	RuntimeRootDir string
 
+	FrontEndBaseUrl string
+	BackEndBaseURL string
+
 	HttpPort int
 	ReadTimeout time.Duration
 	WriteTimeout time.Duration
@@ -57,6 +60,8 @@ func init() {
 	UserRootDir = UploadFileRootDir + sec.Key("USER_SUB_DIR").MustString("user/")
 	QuestionRootDir = UploadFileRootDir + sec.Key("QUESTION_SUB_DIR").MustString("question/")
 	RuntimeRootDir = sec.Key("RUNTIME_ROOT_DIR").MustString("runtime/")
+	FrontEndBaseUrl = sec.Key("FRONTEND_BASE_URL").MustString("http://localhost:8080")
+	BackEndBaseURL = sec.Key("BACKEND_BASE_URL").MustString("http://localhost/api")
 
 	sec, err = Cfg.GetSection("database")
 	if err != nil {

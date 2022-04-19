@@ -4,23 +4,25 @@
 
 see `./conf.ini`
 
-### Local Prepare
+### Requirements
 
 ```
 mysql
 golang
+docker
+docker-compose
 ```
 ### Local Develop Run
 
 ```
-make dev-build-local
+make build-db # run `make rebuild-db` if you want to clear db
 make dev-run-local
 ```
 
 ### Local Release Run
 
 ```
-make build-local
+make build-db # run `make rebuild-db` if you want to clear db
 make run-local
 ```
 
@@ -29,8 +31,16 @@ make run-local
 First please modify `APP_MOUNT_DIR` and `MYSQL_MOUNT_DIR` in `Makefile` according to your file system.
 
 ```
-make mysql  # if needed
 make build-docker
-make run-docker  # in develop mode, run `make dev-run-docker`
+make run-docker
+# run `make rebuild-db` if you want to clear db
+```
+
+then type `localhost/api` in your browser to access our backend. 
+
+#### Stop services
+
+```
+make stop-docker
 ```
 

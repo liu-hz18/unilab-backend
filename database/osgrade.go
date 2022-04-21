@@ -1,19 +1,35 @@
 package database
 
 import(
-	"fmt"
+	// "fmt"
 	"unilab-backend/logging"
-	"unilab-backend/os"
 )
 
-type GradeInfo struct{
+type GradeRecord struct{
+	Id uint32
 	Branch_name string
-	Grade uint32
-	Total_grade uint32
-	Trace string
+	tests []Test
+	outputs []Output
 }
 
-func CreateGradeRecord(userid uint32, branch_name string, tests []os.Test,outputs []os.output)(uint32,error){
+type Test struct{
+	//member definition
+	Id int
+	Name string
+	Passed bool
+	Score int
+}
+
+type Output struct{
+	Id int
+	Type string
+	Alert_class string
+	Message string
+	Content string
+	Expand bool
+}
+
+func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs []Output)(uint32,error){
 	tx,err := db.Begin()
 	if err != nil{
 		if tx !=nil {
@@ -22,15 +38,12 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []os.Test,output
 		logging.Info("CreateOsRecord() begin trans action failed: %v", err)
 	}
 	result,err := tx.Exec(`INSERT INTO os_grade
-		(user_id,branch_name,grade,total_grade,trace)
+		(user_id,branch_name)
 		VALUES
-		(?,?,?,?,?,?);
+		(?,?);
 	`,
 		userid,
 		branch_name,
-		grade,
-		total_grade,
-		trace,
 	)
 	if err != nil{
 		_ = tx.Rollback()
@@ -61,14 +74,15 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []os.Test,output
 			return 0,err
 		}
 	}
-	for _,output := range(ouputs){
+	for _,output := range(outputs){
 		_,err:= tx.Exec(`INSERT INTO os_grade_outputs
-			(grade_id,type,alert_class,message,content,expand)
+			(grade_id,output_id,type,alert_class,message,content,expand)
 			VALUES
-			(?,?,?,?,?,?);
+			(?,?,?,?,?,?,?);
 		`,
 			gradeID,
 			output.Id,
+			output.Type,
 			output.Alert_class,
 			output.Message,
 			output.Content,
@@ -85,37 +99,62 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []os.Test,output
 	return uint32(gradeID),nil
 }
 
-func GetGradeDetailByBranch(branch_name string, userID uint32) (GradeInfo,error){
-	var gradeInfo = GradeInfo{}
-	err := db.QueryRow("SELECT branch_name,grade,total_grade,trace FROM os_grade WHERE user_id=? AND branch_name=?;",userID,branch_name).Scan(
-		&gradeInfo.Branch_name,
-		&gradeInfo.Grade,
-		&gradeInfo.Total_grade,
-		&gradeInfo.Trace,
+func GetGradeDetailByBranch(branch_name string, userID uint32) (GradeRecord,error){
+	gradeRecord := GradeRecord{}
+	tests := []Test{}
+	outputs := []Output{}
+	err := db.QueryRow("SELECT os_grade_id,branch_name FROM os_grade WHERE user_id=? AND branch_name=?;",userID,branch_name).Scan(
+		&gradeRecord.Id,
+		&gradeRecord.Branch_name,
 	)
 	if err != nil{
 		logging.Info(err)
-		return gradeInfo,err
+		return gradeRecord,err
 	}
-	return gradeInfo,nil
-}
-
-func GetGradeDetailsById(userID uint32) ([]GradeInfo,error){
-	var gradeDetails = []GradeInfo{}
-	rows,err := db.Query("SELECT branch_name,grade,total_grade,trace FROM os_grade WHERE user_id=?;",userID)
+	point_rows,err := db.Query("SELECT point_id,point_name,passed,score FROM os_grade_points WHERE grade_id=?;",gradeRecord.Id)
 	if err != nil{
 		logging.Info(err)
-		return gradeDetails,err
+		return gradeRecord,err
 	}
-	defer rows.Close()
-	for rows.Next(){
-		var gradeInfo GradeInfo
-		err := rows.Scan(&gradeInfo.Branch_name,&gradeInfo.Grade,&gradeInfo.Total_grade,&gradeInfo.Trace)
+	defer point_rows.Close()
+	for point_rows.Next(){
+		var test_point Test
+		err := point_rows.Scan(&test_point.Id,test_point.Name,test_point.Passed,test_point.Score)
 		if err != nil{
 			logging.Info(err)
 			continue
 		}
-		gradeDetails=append(gradeDetails,gradeInfo)
+		tests = append(tests,test_point)
+	}
+	output_rows,err := db.Query("SELECT output_id,type,alert_class,message,content,expand FROM os_grade_outputs WHERE grade_id=?;",gradeRecord.Id)
+	if err != nil{
+		logging.Info(err)
+		return gradeRecord,err
+	}
+	defer output_rows.Close()
+	for output_rows.Next(){
+		var output_point Output
+		err := output_rows.Scan(&output_point.Id,&output_point.Type,&output_point.Alert_class,&output_point.Message,&output_point.Content,&output_point.Expand)
+		if err != nil{
+			logging.Info(err)
+			continue
+		}
+		outputs = append(outputs,output_point)
+	}
+	gradeRecord.tests=tests
+	gradeRecord.outputs=outputs
+	return gradeRecord,nil
+}
+
+func GetGradeDetailsById(userID uint32) ([]GradeRecord,error){
+	var gradeDetails = []GradeRecord{}
+	chs := [...]string{"ch7"}
+	for _,ch := range(chs){
+		gradeRecord,err:= GetGradeDetailByBranch(ch,userID)
+		if err != nil{
+			gradeDetails = append(gradeDetails,GradeRecord{0,ch,[]Test{},[]Output{}})
+		}
+		gradeDetails = append(gradeDetails,gradeRecord)
 	}
 	return gradeDetails,nil
 }

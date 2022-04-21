@@ -23,24 +23,7 @@ var COMPILE_FAILED_PATTERN = regexp.MustCompile(`/make\[\d+\]: .* Error .*\n/`)
 const RUSTSBI_FIRST_LINE_PREFIX = "[rustsbi] RustSBI version "
 var CHECK_FIRST_LINE_PATTERN = `python3 check/ch`
 // var outputs=list.New()
-var outputs []output
-
-type Test struct{
-	//member definition
-	Id int
-	Name string
-	Passed bool
-	Score int
-}
-
-type output struct{
-	Id int
-	Type string
-	Alert_class string
-	Message string
-	Content string
-	Expand bool
-}
+var outputs []database.Output
 
 func add_to_outputs(cur_output_lines []string,last_output_type string,cur_has_fail bool,cur_n_pass int,cur_n_fail int){
 	raw_text := strings.Join(cur_output_lines,"\n")
@@ -76,22 +59,22 @@ func add_to_outputs(cur_output_lines []string,last_output_type string,cur_has_fa
 	}else{
 		message=""
 	}
-	outputs=append(outputs,output{len(outputs)+1,last_output_type,alert_class,message,raw_text,cur_has_fail || has_compile_failed})
+	outputs=append(outputs,database.Output{len(outputs)+1,last_output_type,alert_class,message,raw_text,cur_has_fail || has_compile_failed})
 }
 
 
-func Grade(ci_output string) ([]Test,[]output){
+func Grade(ci_output string) ([]database.Test,[]database.Output){
 	lines:=strings.Split(ci_output,"\n")
 	n_pass:=0
 	n_fail:=0
 	test_passed_n1:=0
 	test_passed_n2:=0
 	// tests:=list.New()
-	tests := []Test {}
+	tests := []database.Test {}
 
 	last_output_type:="CI Output"
 	cur_output_type:="CI Output"
-	outputs = []output {}
+	outputs = []database.Output {}
 	cur_output_lines:=[]string {}
 	cur_has_fail:=false
 	cur_n_pass:=0
@@ -122,12 +105,12 @@ func Grade(ci_output string) ([]Test,[]output){
 		if strings.HasPrefix(line,PASS_PREFIX){
 			n_pass++;
 			cur_n_pass++;
-			tests=append(tests,Test{n_pass+n_fail,line[len(PASS_PREFIX):],true,1})
+			tests=append(tests,database.Test{n_pass+n_fail,line[len(PASS_PREFIX):],true,1})
 		}
 		if strings.HasPrefix(line,FAIL_PREFIX){
 			n_fail++
 			cur_n_fail++
-			tests=append(tests,Test{n_pass+n_fail,line[len(FAIL_PREFIX):],false,0})
+			tests=append(tests,database.Test{n_pass+n_fail,line[len(FAIL_PREFIX):],false,0})
 			cur_has_fail=true
 		}
 		if strings.HasPrefix(line,TEST_PASSED_PREFIX){
@@ -155,17 +138,19 @@ func GetOsGradeHandler(c *gin.Context){
 	trace := gitlab_api.Get_project_traces("labs-" + id, id, accessToken)
     if trace == "" {
 		c.JSON(http.StatusOK,gin.H{
-			"tests": []Test{},
-			"outputs": []output{},
+			"tests": []database.Test{},
+			"outputs": []database.Output{},
 		})
 		return
 	}
-	tests, _ := Grade(trace)
+	tests, outputs:= Grade(trace)
+	userId,_ := strconv.ParseUint(id, 10, 32)
+	database.CreateGradeRecord(uint32(userId),"ch7",tests,outputs)
 	// test,_:=json.Marshal(tests)
 	// fmt.Println(tests[0])
-	c.JSON(http.StatusOK,gin.H{
-		"tests":tests,
-		"outputs":outputs,
-	})
+	// c.JSON(http.StatusOK,gin.H{
+	// 	"tests":tests,
+	// 	"outputs":outputs,
+	// })
 }
  

@@ -104,8 +104,8 @@ CREATE TABLE IF NOT EXISTS `oj_testcase_run`(
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='测例信息';
 
 CREATE TABLE IF NOT EXISTS `os_grade`(
-    `user_id` INT(10) UNSIGNED NOT NULL,
     `os_grade_id`   INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT(10) UNSIGNED NOT NULL,
     `branch_name`   VARCHAR(255) NOT NULL,
     -- `grade` INT UNSIGNED NOT NULL,
     -- `total_grade` INT UNSIGNED NOT NULL,
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS `os_grade`(
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节成绩';
 
 CREATE TABLE IF NOT EXISTS `os_grade_points`(
-    `point_id` INT UNSIGNED NOT NULL,
+    `point_id` INT UNSIGNED NOT NULL PRIMARY KEY,
     `grade_id` INT UNSIGNED NOT NULL,
     `point_name` VARCHAR(255) NOT NULL,
     `passed` TINYINT(1) NOT NULL,
@@ -123,11 +123,12 @@ CREATE TABLE IF NOT EXISTS `os_grade_points`(
 )ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节测试点';
 
 CREATE TABLE IF NOT EXISTS `os_grade_outputs`(
+    `output_id` INT UNSIGNED NOT NULL PRIMARY KEY,
     `grade_id` INT UNSIGNED NOT NULL,
     `type` VARCHAR(255) NOT NULL,
     `alert_class` VARCHAR(255) NOT NULL,
     `message` VARCHAR(255) NOT NULL,
-    `content` VARCHAR(255) NOT NULL,
+    `content` TEXT NOT NULL,
     `expand` TINYINT(1) NOT NULL,
     CONSTRAINT os_grade_outputs_1 FOREIGN KEY (grade_id) REFERENCES os_grade(os_grade_id) ON DELETE CASCADE ON UPDATE CASCADE
 )ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节测试输出';

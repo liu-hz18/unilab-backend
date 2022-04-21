@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"unilab-backend/auth"
-	"unilab-backend/logging"
+	// "unilab-backend/logging"
 )
 
 
@@ -55,8 +55,8 @@ func Get_project_info(project_name string, userid string, accessToken string) (s
 		return "", "", ""
 	}
 	project := projects[0]
-	logging.Info("id: ", int(project["id"].(float64)))
-	logging.Info("name: ", project["name"].(string))
+	// logging.Info("id: ", int(project["id"].(float64)))
+	// logging.Info("name: ", project["name"].(string))
 	return strconv.Itoa(int(project["id"].(float64))),project["name"].(string),project["name_with_namespace"].(string)
 }
 
@@ -83,7 +83,7 @@ func Get_pipeline_jobs_info(project_id string, pipeline_id string, userid string
 
 func Get_job_trace(project_id string, job_id string, userid string, accessToken string) string{
 	data := make(map[string]string)
-	logging.Info("/projects/"+project_id+"/jobs/"+job_id+"/trace")
+	// logging.Info("/projects/"+project_id+"/jobs/"+job_id+"/trace")
 	_,trace :=get("/projects/"+project_id+"/jobs/"+job_id+"/trace", data, userid, accessToken)
 	// logging.Info(trace)
 	return string(trace)
@@ -94,7 +94,7 @@ func Get_project_traces(project_name string, userid string, access_token string)
 	if id == "" {
 		return ""
 	}
-	logging.Info(id)
+	// logging.Info(id)
 	// branches:=Get_branches(id)
 	// for _,branch :=range branches{
 	// 	fmt.Println(branch["name"])

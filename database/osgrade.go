@@ -119,7 +119,7 @@ func GetGradeDetailByBranch(branch_name string, userID uint32) (GradeRecord,erro
 	defer point_rows.Close()
 	for point_rows.Next(){
 		var test_point Test
-		err := point_rows.Scan(&test_point.Id,test_point.Name,test_point.Passed,test_point.Score)
+		err := point_rows.Scan(&test_point.Id,&test_point.Name,&test_point.Passed,&test_point.Score)
 		if err != nil{
 			logging.Info(err)
 			continue

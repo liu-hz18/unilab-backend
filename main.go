@@ -111,8 +111,6 @@ func main() {
 		MaxHeaderBytes: maxHeaderBytes,
 	}
 	logging.Info("start http server listening ", endPoint)
-	gradeDetails,_ := database.GetGradeDetailsById(2018011302)
-	fmt.Println(gradeDetails)
 	server.ListenAndServe()
 
 	// testJudger()

@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unilab-backend/apis"
+	// "unilab-backend/apis"
 	"unilab-backend/database"
-	"unilab-backend/gitlab_api"
+	// "unilab-backend/gitlab_api"
 
 	"github.com/gin-gonic/gin"
 	// "encoding/json"
@@ -130,27 +130,27 @@ func Grade(ci_output string) ([]database.Test,[]database.Output){
 
 func GetOsGradeHandler(c *gin.Context){
 	id := c.Query("id")
-	accessToken, err := database.GetUserAccessToken(id)
-	if err != nil {
-		apis.ErrorResponse(c, apis.ERROR, err.Error())
-		return
-	}
-	trace := gitlab_api.Get_project_traces("labs-" + id, id, accessToken)
-    if trace == "" {
-		c.JSON(http.StatusOK,gin.H{
-			"tests": []database.Test{},
-			"outputs": []database.Output{},
-		})
-		return
-	}
-	tests, outputs:= Grade(trace)
+	// accessToken, err := database.GetUserAccessToken(id)
+	// if err != nil {
+	// 	apis.ErrorResponse(c, apis.ERROR, err.Error())
+	// 	return
+	// }
+	// trace := gitlab_api.Get_project_traces("labs-" + id, id, accessToken)
+    // if trace == "" {
+	// 	c.JSON(http.StatusOK,gin.H{
+	// 		"tests": []database.Test{},
+	// 		"outputs": []database.Output{},
+	// 	})
+	// 	return
+	// }
+	// tests, outputs:= Grade(trace)
 	userId,_ := strconv.ParseUint(id, 10, 32)
-	database.CreateGradeRecord(uint32(userId),"ch7",tests,outputs)
+	// database.CreateGradeRecord(uint32(userId),"ch7",tests,outputs)
+	gradeRecord,_:=database.GetGradeDetailByBranch(uint32(userId),"ch7")
 	// test,_:=json.Marshal(tests)
-	// fmt.Println(tests[0])
-	// c.JSON(http.StatusOK,gin.H{
-	// 	"tests":tests,
-	// 	"outputs":outputs,
-	// })
+	c.JSON(http.StatusOK,gin.H{
+		"tests":gradeRecord.Tests,
+		"outputs":gradeRecord.Outputs,
+	})
 }
  

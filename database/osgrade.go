@@ -8,8 +8,8 @@ import(
 type GradeRecord struct{
 	Id uint32
 	Branch_name string
-	tests []Test
-	outputs []Output
+	Tests []Test
+	Outputs []Output
 }
 
 type Test struct{
@@ -99,7 +99,7 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 	return uint32(gradeID),nil
 }
 
-func GetGradeDetailByBranch(branch_name string, userID uint32) (GradeRecord,error){
+func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error){
 	gradeRecord := GradeRecord{}
 	tests := []Test{}
 	outputs := []Output{}
@@ -141,8 +141,8 @@ func GetGradeDetailByBranch(branch_name string, userID uint32) (GradeRecord,erro
 		}
 		outputs = append(outputs,output_point)
 	}
-	gradeRecord.tests=tests
-	gradeRecord.outputs=outputs
+	gradeRecord.Tests=tests
+	gradeRecord.Outputs=outputs
 	return gradeRecord,nil
 }
 
@@ -150,7 +150,7 @@ func GetGradeDetailsById(userID uint32) ([]GradeRecord,error){
 	var gradeDetails = []GradeRecord{}
 	chs := [...]string{"ch7"}
 	for _,ch := range(chs){
-		gradeRecord,err:= GetGradeDetailByBranch(ch,userID)
+		gradeRecord,err:= GetGradeDetailByBranch(userID,ch)
 		if err != nil{
 			gradeDetails = append(gradeDetails,GradeRecord{0,ch,[]Test{},[]Output{}})
 		}

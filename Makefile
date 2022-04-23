@@ -43,3 +43,8 @@ run-docker:
 stop-docker:
 	docker-compose stop 
 # docker-compose kill
+
+# sudo docker run --name mysql -p 3307:3306 -e MYSQL_ROOT_PASSWORD=123456 -v ~/mysql-docker:/var/lib/mysql -d mysql
+# sudo docker build -t unilab-backend-docker .
+# sudo docker run --name unilab-backend --link mysql:mysql -p 8080:1323 -v ~/unilab-backend-mount/runtime:/unilab-files/runtime -v ~/unilab-backend-mount/upload:/unilab-files/upload -d unilab-backend-docker
+

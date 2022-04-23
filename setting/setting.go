@@ -41,15 +41,7 @@ func init() {
 		log.Fatal(fmt.Sprintf("Fail to parse 'conf.ini': ", err))
 	}
 	
-	sec, err := Cfg.GetSection("server")
-	if err != nil {
-		log.Fatal(fmt.Sprintf("Fail to get section 'server' in 'conf.ini': ", err))
-	}
-	HttpPort = sec.Key("HTTP_PORT").MustInt(1323)
-	ReadTimeout = time.Duration(sec.Key("READ_TIMEOUT").MustInt(60)) * time.Second
-	WriteTimeout = time.Duration(sec.Key("WRITE_TIMEOUT").MustInt(60)) * time.Second
-	
-	sec, err = Cfg.GetSection("app")
+	sec, err := Cfg.GetSection("app")
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Fail to get section 'app' in 'conf.ini': ", err))
 	}
@@ -60,9 +52,18 @@ func init() {
 	UserRootDir = UploadFileRootDir + sec.Key("USER_SUB_DIR").MustString("user/")
 	QuestionRootDir = UploadFileRootDir + sec.Key("QUESTION_SUB_DIR").MustString("question/")
 	RuntimeRootDir = sec.Key("RUNTIME_ROOT_DIR").MustString("runtime/")
-	FrontEndBaseUrl = sec.Key("FRONTEND_BASE_URL").MustString("http://localhost:8080")
-	BackEndBaseURL = sec.Key("BACKEND_BASE_URL").MustString("http://localhost/api")
+	FrontEndBaseUrl = sec.Key("FRONTEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn")
+	BackEndBaseURL = sec.Key("BACKEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn/api")
 
+
+	sec, err = Cfg.GetSection("server")
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Fail to get section 'server' in 'conf.ini': ", err))
+	}
+	HttpPort = sec.Key("HTTP_PORT").MustInt(1323)
+	ReadTimeout = time.Duration(sec.Key("READ_TIMEOUT").MustInt(60)) * time.Second
+	WriteTimeout = time.Duration(sec.Key("WRITE_TIMEOUT").MustInt(60)) * time.Second
+	
 	sec, err = Cfg.GetSection("database")
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Fail to get section 'database' in 'conf.ini': ", err))

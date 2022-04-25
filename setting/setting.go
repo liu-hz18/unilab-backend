@@ -10,6 +10,7 @@ import (
 
 var (
 	Cfg *ini.File
+	// app
 	RunMode string
 	JwtSecret string
 	UploadFileRootDir string
@@ -21,10 +22,19 @@ var (
 	FrontEndBaseUrl string
 	BackEndBaseURL string
 
+	// auth
+	GitLabBaseURL string
+	GitLabAuthURL string
+	GitLabTokenURL string
+	ClientID string
+	ClientSecret string
+
+	// server
 	HttpPort int
 	ReadTimeout time.Duration
 	WriteTimeout time.Duration
 
+	// database
 	DBType string
 	DBName string
 	DBUser string
@@ -55,6 +65,16 @@ func init() {
 	FrontEndBaseUrl = sec.Key("FRONTEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn")
 	BackEndBaseURL = sec.Key("BACKEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn/api")
 
+	
+	sec, err = Cfg.GetSection("auth")
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Fail to get section 'auth' in 'conf.ini': ", err))
+	}
+	GitLabBaseURL = sec.Key("GITLAB_BASE_URL").MustString("https://git.tsinghua.edu.cn/api/v4")
+	GitLabAuthURL = sec.Key("AUTH_URL").MustString("https://git.tsinghua.edu.cn/oauth/authorize")
+	GitLabTokenURL = sec.Key("TOKEN_URL").MustString("https://git.tsinghua.edu.cn/oauth/token")
+	ClientID = sec.Key("ID").String()
+	ClientSecret = sec.Key("SECRET").String()
 
 	sec, err = Cfg.GetSection("server")
 	if err != nil {
@@ -64,6 +84,7 @@ func init() {
 	ReadTimeout = time.Duration(sec.Key("READ_TIMEOUT").MustInt(60)) * time.Second
 	WriteTimeout = time.Duration(sec.Key("WRITE_TIMEOUT").MustInt(60)) * time.Second
 	
+
 	sec, err = Cfg.GetSection("database")
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Fail to get section 'database' in 'conf.ini': ", err))

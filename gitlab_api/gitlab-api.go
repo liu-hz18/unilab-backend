@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"unilab-backend/auth"
+	"unilab-backend/setting"
 	"unilab-backend/logging"
 )
 
@@ -15,7 +15,7 @@ import (
 func get(urls string, data map[string]string, userid string, access_token string) ([]map[string]interface{},string){
 	client := &http.Client{}
 	params := url.Values{}
-	Url,err := url.Parse(auth.GitLabAPIBaseURL + urls)
+	Url,err := url.Parse(setting.GitLabBaseURL + urls)
 	if err!=nil {
 		return nil,""
 	}
@@ -36,7 +36,7 @@ func get(urls string, data map[string]string, userid string, access_token string
 func post(url string, data map[string]interface{}) map[string]interface{} {
 	client := &http.Client{}
 	bytesData,_ := json.Marshal(data)
-	req,_ := http.NewRequest("POST", auth.GitLabAPIBaseURL + url,bytes.NewReader(bytesData))
+	req,_ := http.NewRequest("POST", setting.GitLabBaseURL + url,bytes.NewReader(bytesData))
 	response,_ := client.Do(req)
 	body,_ := ioutil.ReadAll(response.Body)
 	var result map[string]interface{}

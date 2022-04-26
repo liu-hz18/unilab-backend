@@ -1,14 +1,13 @@
-FROM golang:alpine AS builder
+FROM golang:latest AS builder
 
 ENV GO111MODULE='on'
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB='off'
 ENV TZ=Asia/Shanghai
 
-RUN apk update
-RUN apk --no-cache --virtual build-dependencies add git tzdata
-RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime \
-    && echo ${TZ} > /etc/timezone
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git tzdata build-essential
+RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
 # 创建文件夹
 RUN mkdir /unilab-backend
 
@@ -19,27 +18,32 @@ WORKDIR /unilab-backend
 ADD . /unilab-backend
 
 # 因为已经是在 /app下了，所以使用  ./
+RUN mkdir -p ./prebuilt
 RUN go build -v -o main .
-RUN apk del build-dependencies
+RUN g++ ./third_party/vfk_uoj_sandbox/run_program.cpp -o ./prebuilt/uoj_run -O2
+RUN g++ ./third_party/testlib/fcmp.cpp -o ./prebuilt/fcmp -O2
+RUN DEBIAN_FRONTEND=noninteractive apt-get remove -y git tzdata build-essential
 
 
 # 运行时 镜像
-FROM alpine:latest AS runner
+FROM ubuntu:latest AS runner
 ENV TZ=Asia/Shanghai
-# 配置国内源
-RUN echo "http://mirrors.aliyun.com/alpine/latest-stable/main/" > /etc/apk/repositories
-RUN apk update
-RUN apk --no-cache add ca-certificates && update-ca-certificates
+
+RUN apt-get update && apt-get upgrade
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates && update-ca-certificates
 # dns
 RUN echo "hosts: files dns" > /etc/nsswitch.conf
-RUN apk --no-cache add tzdata
-RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime \
-    && echo ${TZ} > /etc/timezone
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata bash bash-doc bash-completion build-essential
+RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
+RUN apt-get autoclean 
+RUN apt-get autoremove 
+RUN /bin/bash
 # 创建文件夹
 RUN mkdir -p /unilab-backend
 
 WORKDIR /unilab-backend
 COPY --from=builder /unilab-backend/main /unilab-backend/main
+COPY --from=builder /unilab-backend/prebuilt /unilab-backend/prebuilt
 COPY --from=builder /unilab-backend/conf.ini /unilab-backend/conf.ini
 RUN chmod +x /unilab-backend/main
 

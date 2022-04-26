@@ -184,7 +184,7 @@ func GetAssignemntInfo(CourseID uint32, UserID uint32) ([]Assignment, error) {
 						logging.Info(err)
 						return nil, err
 					}
-					if state == "ac" {
+					if state == "Accepted" {
 						ac_count += 1
 					}
 				}

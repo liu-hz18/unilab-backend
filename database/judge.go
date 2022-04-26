@@ -3,8 +3,11 @@ package database
 import (
 	"fmt"
 	"time"
+	"strconv"
 	"unilab-backend/logging"
+	"unilab-backend/setting"
 	"unilab-backend/utils"
+	"unilab-backend/judger"
 )
 
 type SubmitCodeForm struct {
@@ -19,7 +22,7 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 		if tx != nil {
 			_ = tx.Rollback()
 		}
-		logging.Info("CreateSubmitRecord() begin trans action failed: %v", err)
+		logging.Info("CreateSubmitRecord() begin trans action failed: ", err)
 	}
 	// insert into test-run table
 	result, err := tx.Exec(`INSERT INTO oj_test_run
@@ -68,6 +71,45 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 	logging.Info("CreateSubmitRecord() commit trans action successfully.")
 	return uint32(testID), nil
 }
+
+
+func RunTest(testID uint32) {
+	// read test meta info from `oj_test_run`
+	var programDir string
+	var questionID uint32
+	err := db.QueryRow("SELECT save_dir, question_id from oj_test_run WHERE test_id=?;", testID).Scan(&programDir, &questionID)
+	if err != nil {
+		logging.Error(err)
+		return
+	}
+	// read question meta info from `oj_question`
+	var name string
+	var timeLimit uint32
+	var memoryLimit uint32
+	var testcaseNum uint32
+	err = db.QueryRow("SELECT question_name, question_time_limit, question_memory_limit, question_testcase_num from oj_question WHERE question_id=?;", questionID).Scan(
+		&name,
+		&timeLimit,
+		&memoryLimit,
+		&testcaseNum,
+	)
+	if err != nil {
+		logging.Error(err)
+		return
+	}
+	questionDir := setting.QuestionRootDir + strconv.FormatUint(uint64(questionID), 10) + "_" + name + "/"
+	
+	config := judger.TestConfig{
+		testID,
+		timeLimit,
+		memoryLimit * 1024, // frontend:MB -> backend:KB
+		testcaseNum,
+	}
+	result := judger.LaunchTest(config, questionDir, programDir)
+	logging.Info("run result: ", result)
+	UpdateTestCaseRunResults(result)
+}
+
 
 func GetQuestionSubmitCounts(questionID, userID uint32) (uint32, error) {
 	totalRow, err := db.Query("SELECT COUNT(*) FROM oj_test_run WHERE question_id=? AND user_id=?;", questionID, userID)
@@ -194,4 +236,93 @@ func GetTestDetailsByIDs(testIDs []uint32) ([]TestDetail) {
 		testDetails = append(testDetails, testDetail)
 	}
 	return testDetails
+}
+
+
+func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
+	tx, err := db.Begin()
+	if err != nil {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+		logging.Info("UpdateTestCaseRunResults() begin trans action failed: ", err)
+	}
+	_, err = tx.Exec(`
+		UPDATE oj_test_run SET
+		compile_result=?
+		WHERE
+		test_id=?;
+	`,
+		judgerResult.CompileResult,
+		judgerResult.TestID,
+	)
+	logging.Info("extra result:", judgerResult.ExtraResult)
+	if err != nil {
+		_ = tx.Rollback()
+		logging.Info(err)
+		return
+	}
+	var code uint32
+	if len(judgerResult.RunResults) == int(judgerResult.CaseNum) {
+		for rank, runResults := range judgerResult.RunResults {
+			if runResults.RunStatus == judger.RunFinished {
+				if runResults.Accepted {
+					code = judger.RunFinished
+				} else {
+					code = judger.WrongAnswer
+				}
+			}
+			logging.Info("t: ", runResults.TimeElasped, "m: ", runResults.MemoryUsage)
+			_, err = tx.Exec(`
+				UPDATE oj_testcase_run SET 
+				testcase_run_state=?,
+				testcase_run_time_elapsed=?,
+				testcase_run_memory_usage=?
+				WHERE
+				test_id=? AND testcase_rank=?;
+			`,
+				judger.RunResultMap[code],
+				runResults.TimeElasped,
+				runResults.MemoryUsage,
+				judgerResult.TestID,
+				rank,
+			)
+			if err != nil {
+				_ = tx.Rollback()
+				logging.Info(err)
+				return
+			}
+		}
+	} else {
+		if judgerResult.CompileResult == "" {
+			code = judger.JudgeFailed
+		} else {
+			code = judger.CompileError
+		}
+		for rank := 0; rank < int(judgerResult.CaseNum); rank++ {
+			_, err = tx.Exec(`
+				UPDATE oj_testcase_run SET 
+				testcase_run_state=?,
+				testcase_run_time_elapsed=?,
+				testcase_run_memory_usage=?
+				WHERE
+				test_id=? AND testcase_rank=?;
+			`,
+				judger.RunResultMap[code],
+				0,
+				0,
+				judgerResult.TestID,
+				rank,
+			)
+			if err != nil {
+				_ = tx.Rollback()
+				logging.Info(err)
+				return
+			}
+		}
+	}
+	
+	_ = tx.Commit()
+	logging.Info("UpdateTestCaseRunResults() commit trans action successfully.")
+	return
 }

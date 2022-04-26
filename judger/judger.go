@@ -1,6 +1,7 @@
 package judger
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -8,7 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
+	// "path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -18,22 +19,38 @@ import (
 
 const (
 	RunFinished         uint32 = 0
+	UnknownError        uint32 = 1
 	RuntimeError        uint32 = 2
 	MemoryLimitExceeded uint32 = 3
 	TimeLimitExceeded   uint32 = 4
 	OutputLimitExceeded uint32 = 5
 	DangerousSystemCall uint32 = 6
 	JudgeFailed         uint32 = 7
+	CompileError        uint32 = 8
+	WrongAnswer         uint32 = 9
 )
 
-const ResourceLimiter = "ulimit -t 5 && ulimit -v 524288 && ulimit -f 20480"
+var RunResultMap = map[uint32]string{
+	RunFinished:           "Accepted",
+	UnknownError:          "UnknownError",
+	RuntimeError:          "RuntimeError",
+	MemoryLimitExceeded:   "MemoryLimitExceeded",
+	TimeLimitExceeded:     "TimeLimitExceeded",
+	OutputLimitExceeded:   "OutputLimitExceeded",
+	DangerousSystemCall:   "DangerousSystemCall",
+	JudgeFailed:           "JudgerFailed",
+	CompileError:          "CompileError",
+	WrongAnswer:           "WrongAnswer",
+}
+
+const ResourceLimiter = "ulimit -t 5 && ulimit -v 524288 && ulimit -f 81920"
 
 type TestConfig struct {
-	ProblemName   string
+	TestID        uint32
 	TimeLimit     uint32 // ms
 	MemoryLimit   uint32 // KB
 	TestCaseNum   uint32
-	TestCaseScore []uint32
+	// TestCaseScore []uint32
 }
 
 type TestCaseResult struct {
@@ -47,6 +64,8 @@ type TestCaseResult struct {
 }
 
 type TestResult struct {
+	TestID        uint32
+	CaseNum       uint32
 	CompileResult string
 	ExtraResult   string
 	RunResults    []TestCaseResult
@@ -61,10 +80,6 @@ func check_uint_range(value, low, high uint32) bool {
 
 func check_cfg(cfg TestConfig) string {
 	var message string
-	if cfg.ProblemName == "" {
-		message = "Problem Name Not valid!"
-		return message
-	}
 	if !check_uint_range(cfg.TestCaseNum, 1, 100) {
 		message = "Test Case Num Not valid!"
 		return message
@@ -77,42 +92,42 @@ func check_cfg(cfg TestConfig) string {
 		message = "Test Memory Limit Not valid!"
 		return message
 	}
-	if len(cfg.TestCaseScore) != int(cfg.TestCaseNum) {
-		message = "Test Case Score Not match test case num!"
-		return message
-	}
-	for index, score := range cfg.TestCaseScore {
-		if !check_uint_range(score, 0, 100) {
-			message = fmt.Sprintf("Test Case %d Score out of range [0, 100] !", index)
-			return message
-		}
-	}
+	// if len(cfg.TestCaseScore) != int(cfg.TestCaseNum) {
+	// 	message = "Test Case Score Not match test case num!"
+	// 	return message
+	// }
+	// for index, score := range cfg.TestCaseScore {
+	// 	if !check_uint_range(score, 0, 100) {
+	// 		message = fmt.Sprintf("Test Case %d Score out of range [0, 100] !", index)
+	// 		return message
+	// 	}
+	// }
 	return ""
 }
 
 func check_test_case_dir(testCaseDir string, testCaseNum int) string {
-	files, err := ioutil.ReadDir(testCaseDir)
-	if err != nil {
-		return err.Error()
-	}
-	if len(files) != 2*testCaseNum {
-		return "Test Case Num DO NOT match Test Case Dir!"
-	}
+	// files, err := ioutil.ReadDir(testCaseDir)
+	// if err != nil {
+	// 	return err.Error()
+	// }
+	// if len(files) != 2*testCaseNum {
+	// 	return "Test Case Num DO NOT match Test Case Dir's TestCase Files!"
+	// }
 	for i := 1; i <= testCaseNum; i++ {
-		data, err := ioutil.ReadFile(path.Join(testCaseDir, fmt.Sprintf("%d.in", i)))
+		_, err := ioutil.ReadFile(path.Join(testCaseDir, fmt.Sprintf("%d.in", i)))
 		if err != nil {
 			return fmt.Sprintf("Test Case %d need a %d.in !", i, i)
 		}
-		if string(data) == "" {
-			return fmt.Sprintf("Test Case %d: %d.in is empty !", i, i)
-		}
-		data, err = ioutil.ReadFile(path.Join(testCaseDir, fmt.Sprintf("%d.ans", i)))
+		// if string(data) == "" {
+		// 	return fmt.Sprintf("Test Case %d: %d.in is empty !", i, i)
+		// }
+		_, err = ioutil.ReadFile(path.Join(testCaseDir, fmt.Sprintf("%d.ans", i)))
 		if err != nil {
 			return fmt.Sprintf("Test Case %d need a %d.ans !", i, i)
 		}
-		if string(data) == "" {
-			return fmt.Sprintf("Test Case %d: %d.ans is empty !", i, i)
-		}
+		// if string(data) == "" {
+		// 	return fmt.Sprintf("Test Case %d: %d.ans is empty !", i, i)
+		// }
 	}
 	return ""
 }
@@ -155,13 +170,19 @@ type Response struct {
 	ExitCode int
 }
 
-func Subprocess(timeout int, executable string, pwd string, args ...string) Response {
+func Subprocess(add_limit bool, timeout int, executable string, pwd string, args ...string) Response {
 	var res Response
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout+5) * time.Second)
 	defer cancel()
-	cmdarray := append([]string{"-c", fmt.Sprintf("%s && %s", ResourceLimiter, executable)}, args...)
-	logging.Info("Exec Command: bash " + strings.Join(cmdarray, " "))
-	cmd := exec.CommandContext(ctx, "bash", cmdarray...)
+	cmdarray := []string{}
+	if add_limit {
+		cmdarray = append([]string{fmt.Sprintf("%s && %s", ResourceLimiter, executable)}, args...)
+	} else {
+		cmdarray = append([]string{executable}, args...)
+	}
+	
+	logging.Info("Exec Command: bash -c " + strings.Join(cmdarray, " "))
+	cmd := exec.CommandContext(ctx, "bash", "-c", strings.Join(cmdarray, " "))
 	if pwd != "" {
 		cmd.Dir = pwd
 	}
@@ -184,25 +205,48 @@ func Subprocess(timeout int, executable string, pwd string, args ...string) Resp
 		return res
 	}
 	defer stderr.Close()
-	cmd.Start()
-	outContent, err := ioutil.ReadAll(stdout)
+	outContent := ""
+	errContent := ""
+	err = cmd.Start()
 	if err != nil {
-		logging.Info(err)
+		logging.Info("start command error: ", err)
 		res.StdErr = err.Error()
 		res.StdOut = ""
-		res.ExitCode = getErrorExitCode(err)
-		cmd.Process.Kill()
+		res.ExitCode = 1
 		return res
 	}
-	errContent, err := ioutil.ReadAll(stderr)
-	if err != nil {
-		logging.Info(err)
-		res.StdErr = err.Error()
-		res.StdOut = ""
-		res.ExitCode = getErrorExitCode(err)
-		cmd.Process.Kill()
-		return res
-	}
+	scanner := bufio.NewScanner(stdout)
+    scanner.Split(bufio.ScanWords)
+    for scanner.Scan() {
+        outContent += scanner.Text()
+        // fmt.Println(m)
+    }
+	logging.Info("stdout: ", outContent)
+	scanner = bufio.NewScanner(stderr)
+    scanner.Split(bufio.ScanWords)
+    for scanner.Scan() {
+        errContent += scanner.Text()
+        // fmt.Println(m)
+    }
+	logging.Info("stderr: ", errContent)
+	// outContent, err := ioutil.ReadAll(stdout)
+	// if err != nil {
+	// 	logging.Info(err)
+	// 	res.StdErr = err.Error()
+	// 	res.StdOut = ""
+	// 	res.ExitCode = getErrorExitCode(err)
+	// 	cmd.Process.Kill()
+	// 	return res
+	// }
+	// errContent, err := ioutil.ReadAll(stderr)
+	// if err != nil {
+	// 	logging.Info(err)
+	// 	res.StdErr = err.Error()
+	// 	res.StdOut = ""
+	// 	res.ExitCode = getErrorExitCode(err)
+	// 	cmd.Process.Kill()
+	// 	return res
+	// }
 	err = cmd.Wait()
 	if err != nil {
 		logging.Info(err, string(outContent), string(errContent))
@@ -211,15 +255,21 @@ func Subprocess(timeout int, executable string, pwd string, args ...string) Resp
 		res.ExitCode = getErrorExitCode(err)
 		return res
 	}
+	// outContent, _ := cmd.CombinedOutput()
+	// logging.Info(string(outContent))
 	res.StdOut = string(outContent)
 	res.StdErr = string(errContent)
+	// res.StdErr = ""
 	res.ExitCode = cmd.ProcessState.Sys().(syscall.WaitStatus).ExitStatus()
+	// res.ExitCode = 0
 	return res
 }
 
 
 func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResult {
 	var result TestResult
+	result.TestID = cfg.TestID
+	result.CaseNum = cfg.TestCaseNum
 	result.CompileResult = ""
 	result.ExtraResult = ""
 	result.RunResults = []TestCaseResult{}
@@ -229,6 +279,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 		result.ExtraResult = check_cfg_msg
 		return result
 	}
+	logging.Info("Launch Test ID: ", cfg.TestID)
 	// check testcase
 	check_testcase_msg := check_test_case_dir(testCaseDir, int(cfg.TestCaseNum))
 	if check_testcase_msg != "" {
@@ -237,14 +288,12 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	}
 	// create temp directory
 	tempDirName, err := ioutil.TempDir("", "*")
-	tempDirName = filepath.ToSlash(tempDirName)
-	// tempdir_in_linux := strings.Replace(tempDirName, "C:", "/mnt/c", -1)
 	logging.Info("create temp directory: ", tempDirName)
 	if err != nil {
 		result.ExtraResult = err.Error()
 		return result
 	}
-	// defer os.RemoveAll(tempDirName)
+	defer os.RemoveAll(tempDirName)
 	// copy source code and test case into temp directory
 	err = copyToDstDir(tempDirName, testCaseDir)
 	if err != nil {
@@ -267,7 +316,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 		// }
 	}
 	cmd := "g++ main.cpp -O2 -o main.exe -fdiagnostics-color=always"
-	response := Subprocess(30, cmd, tempDirName)
+	response := Subprocess(true, 30, cmd, tempDirName)
 	logging.Info(response)
 	if response.ExitCode != 0 {
 		logging.Info("Compile Error: ", response.StdErr)
@@ -278,7 +327,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	// run testcase
 	for i := 1; i <= int(cfg.TestCaseNum); i++ {
 		response = Subprocess(
-			30, "./prebuilt/uoj_run.exe", "",
+			true, 30, "./prebuilt/uoj_run", "",
 			fmt.Sprintf("--tl=%d", cfg.TimeLimit),
 			fmt.Sprintf("--rtl=%d", cfg.TimeLimit + 1000),
 			fmt.Sprintf("--ml=%d", cfg.MemoryLimit),
@@ -322,7 +371,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 		// check .ans and .out
 		if success {
 			response = Subprocess(
-				30, "./prebuilt/uoj_run.exe", "",
+				false, 30, "./prebuilt/uoj_run", "",
 				fmt.Sprintf("--tl=%d", (5 * 1000)),
 				fmt.Sprintf("--rtl=%d", (10 * 1000)),
 				fmt.Sprintf("--ml=%d", (512 * 1024)),
@@ -334,7 +383,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.in", i))),
 				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
 				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.ans", i))),
-				path.Join(tempDirName, "prebuilt/fcmp.exe"),
+				"./prebuilt/fcmp",
 				path.Join(tempDirName, fmt.Sprintf("%d.in", i)),
 				path.Join(tempDirName, fmt.Sprintf("%d.out", i)),
 				path.Join(tempDirName, fmt.Sprintf("%d.ans", i)),
@@ -352,7 +401,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 					checker_status, _ := strconv.ParseUint(spj_run_res_arr[0], 10, 32)
 					test_case_result.CheckerStatus = uint32(checker_status)
 					// parse checker output
-					test_case_result.Accepted = (response.StdOut[:3] == "ok ")
+					test_case_result.Accepted = (response.StdOut[:2] == "ok")
 					test_case_result.CheckerOutput = response.StdOut
 				}
 			}

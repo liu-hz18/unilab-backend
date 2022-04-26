@@ -70,6 +70,9 @@ func SubmitCodeHandler(c *gin.Context) {
 		"msg": MsgFlags[code],
 		"data": data,
 	})
+	// run test
+	logging.Info("begin launtch test: ", testID)
+	database.RunTest(testID)
 }
 
 // fetch all submit test ids

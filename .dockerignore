@@ -2,3 +2,4 @@
 *.md
 Makefile
 .gitignore
+/prebuilt

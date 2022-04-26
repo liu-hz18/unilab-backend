@@ -19,13 +19,12 @@ import (
 
 func testJudger() {
 	config := judger.TestConfig{
-		"title",
+		1,
 		1000,
 		262144,
 		3,
-		[]uint32{10, 10, 10},
 	}
-	result := judger.LaunchTest(config, "../testcase", "../program")
+	result := judger.LaunchTest(config, "../../testcase", "../../program")
 	logging.Info(result)
 }
 
@@ -86,7 +85,7 @@ func initRouter() *gin.Engine {
 func main() {
 	logging.Info("Start Golang App")
 	database.InitDB()
-	// database.PreinitDBTestData()
+
 	gin.SetMode(setting.RunMode)
 	router := initRouter()
 	endPoint := fmt.Sprintf(":%d", setting.HttpPort)

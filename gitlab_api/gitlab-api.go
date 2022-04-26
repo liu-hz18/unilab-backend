@@ -1,6 +1,7 @@
 package gitlab_api
 
 import (
+	"fmt"
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
@@ -89,11 +90,12 @@ func Get_job_trace(project_id string, job_id string, userid string, accessToken 
 	return string(trace)
 }
 
-func Get_project_traces(project_name string, userid string, access_token string) string {
-	id,_,_ := Get_project_info(project_name, userid, access_token)
-	if id == "" {
-		return ""
+func Get_project_traces(project_name string, userid string, access_token string) map[string]string {
+	project_id,_,_ := Get_project_info(project_name, userid, access_token)
+	if project_id == "" {
+		return nil
 	}
+	traces := make(map[string] string)
 	// logging.Info(id)
 	// branches:=Get_branches(id)
 	// for _,branch :=range branches{
@@ -101,11 +103,28 @@ func Get_project_traces(project_name string, userid string, access_token string)
 	// }
 	// branch:=branches[1]["name"].(string)
 	// pipelines:=Get_pipelines_info(id,branch)
-	pipelines := Get_pipelines_info(id, "ch7", userid, access_token)
-	pipline := strconv.Itoa(int(pipelines[0]["id"].(float64)))
-	jobs := Get_pipeline_jobs_info(id,pipline, userid, access_token)
-	job := strconv.Itoa(int(jobs[0]["id"].(float64)))
-	// logging.Info(job)
-	trace := Get_job_trace(id ,job, userid, access_token)
-	return trace
+	// pipelines := Get_pipelines_info(id, "ch7", userid, access_token)
+	// pipline := strconv.Itoa(int(pipelines[0]["id"].(float64)))
+	// jobs := Get_pipeline_jobs_info(id,pipline, userid, access_token)
+	// job := strconv.Itoa(int(jobs[0]["id"].(float64)))
+	// // logging.Info(job)
+	// trace := Get_job_trace(id ,job, userid, access_token)
+
+	branches := Get_branches(project_id,userid,access_token)
+	for _,branch := range(branches){
+		pipelines := Get_pipelines_info(project_id,branch["name"].(string),userid,access_token)
+		// pipline_id := strconv.Itoa(int(pipelines[0]["id"].(float64)))
+		for _,pipeline := range(pipelines){
+			if pipeline["status"].(string) == "success"{
+				fmt.Println(branch["name"])
+				pipline_id := strconv.Itoa(int(pipeline["id"].(float64)))
+				jobs := Get_pipeline_jobs_info(project_id,pipline_id,userid,access_token)
+				job_id := strconv.Itoa(int(jobs[0]["id"].(float64)))
+				trace := Get_job_trace(project_id,job_id,userid,access_token)
+				traces[branch["name"].(string)]=trace
+				break
+			}
+		}
+	}
+	return traces
 }

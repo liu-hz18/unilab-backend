@@ -29,6 +29,9 @@ func testJudger() {
 	logging.Info(result)
 }
 
+func testOs(){
+	database.GetGradeDetailsById(2018011302)
+}
 
 
 	// log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
@@ -97,6 +100,7 @@ func initRouter() *gin.Engine {
 func main() {
 	logging.Info("Start Golang App")
 	database.InitDB()
+	// testOs()
 	// database.PreinitDBTestData()
 	gin.SetMode(setting.RunMode)
 	router := initRouter()
@@ -112,6 +116,6 @@ func main() {
 	}
 	logging.Info("start http server listening ", endPoint)
 	server.ListenAndServe()
-
+	
 	// testJudger()
 }

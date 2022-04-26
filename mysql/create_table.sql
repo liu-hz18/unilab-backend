@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS `os_grade`(
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节成绩';
 
 CREATE TABLE IF NOT EXISTS `os_grade_points`(
-    `point_id` INT UNSIGNED NOT NULL PRIMARY KEY,
+    `point_id` INT UNSIGNED NOT NULL,
     `grade_id` INT UNSIGNED NOT NULL,
     `point_name` VARCHAR(255) NOT NULL,
     `passed` TINYINT(1) NOT NULL,
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS `os_grade_points`(
 )ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节测试点';
 
 CREATE TABLE IF NOT EXISTS `os_grade_outputs`(
-    `output_id` INT UNSIGNED NOT NULL PRIMARY KEY,
+    `output_id` INT UNSIGNED NOT NULL,
     `grade_id` INT UNSIGNED NOT NULL,
     `type` VARCHAR(255) NOT NULL,
     `alert_class` VARCHAR(255) NOT NULL,

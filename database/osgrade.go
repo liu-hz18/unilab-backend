@@ -1,7 +1,7 @@
 package database
 
 import(
-	// "fmt"
+	"fmt"
 	"unilab-backend/logging"
 )
 
@@ -148,13 +148,34 @@ func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error
 
 func GetGradeDetailsById(userID uint32) ([]GradeRecord,error){
 	var gradeDetails = []GradeRecord{}
-	chs := [...]string{"ch7"}
-	for _,ch := range(chs){
+	// chs := [...]string{"ch7"}
+	rows,err := db.Query("SELECT branch_name FROM os_grade WHERE user_id=?;",userID)
+	if err != nil{
+		logging.Info(err)
+		return gradeDetails,err
+	}
+	defer rows.Close()
+	for rows.Next(){
+		var ch string
+		err := rows.Scan(&ch)
+		if err != nil{
+			logging.Info(err)
+			return gradeDetails,err
+		}
+		// fmt.Println(ch)
 		gradeRecord,err:= GetGradeDetailByBranch(userID,ch)
 		if err != nil{
 			gradeDetails = append(gradeDetails,GradeRecord{0,ch,[]Test{},[]Output{}})
 		}
 		gradeDetails = append(gradeDetails,gradeRecord)
 	}
+	fmt.Println(gradeDetails)
+	// for _,ch := range(chs){
+	// 	gradeRecord,err:= GetGradeDetailByBranch(userID,ch)
+	// 	if err != nil{
+	// 		gradeDetails = append(gradeDetails,GradeRecord{0,ch,[]Test{},[]Output{}})
+	// 	}
+	// 	gradeDetails = append(gradeDetails,gradeRecord)
+	// }
 	return gradeDetails,nil
 }

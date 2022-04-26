@@ -1,7 +1,7 @@
 package database
 
 import(
-	"fmt"
+	// "fmt"
 	"unilab-backend/logging"
 )
 
@@ -169,13 +169,5 @@ func GetGradeDetailsById(userID uint32) ([]GradeRecord,error){
 		}
 		gradeDetails = append(gradeDetails,gradeRecord)
 	}
-	fmt.Println(gradeDetails)
-	// for _,ch := range(chs){
-	// 	gradeRecord,err:= GetGradeDetailByBranch(userID,ch)
-	// 	if err != nil{
-	// 		gradeDetails = append(gradeDetails,GradeRecord{0,ch,[]Test{},[]Output{}})
-	// 	}
-	// 	gradeDetails = append(gradeDetails,gradeRecord)
-	// }
 	return gradeDetails,nil
 }

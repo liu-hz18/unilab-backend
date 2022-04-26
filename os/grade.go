@@ -2,13 +2,13 @@ package os
 
 import (
 	"fmt"
-	// "net/http"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
-	"unilab-backend/apis"
+	// "unilab-backend/apis"
 	"unilab-backend/database"
-	"unilab-backend/gitlab_api"
+	// "unilab-backend/gitlab_api"
 
 	"github.com/gin-gonic/gin"
 	// "encoding/json"
@@ -130,31 +130,34 @@ func Grade(ci_output string) ([]database.Test,[]database.Output){
 
 func GetOsGradeHandler(c *gin.Context){
 	id := c.Query("id")
-	accessToken, err := database.GetUserAccessToken(id)
-	if err != nil {
-		apis.ErrorResponse(c, apis.ERROR, err.Error())
-		return
-	}
-	traces:=gitlab_api.Get_project_traces("labs-" + id, id, accessToken)
-	userId,_ := strconv.ParseUint(id, 10, 32)
-	for trace := range traces{
-		tests,outputs := Grade(traces[trace])
-		database.CreateGradeRecord(uint32(userId),trace,tests,outputs)
-	}
-    // if trace == "" {
-	// 	c.JSON(http.StatusOK,gin.H{
-	// 		"tests": []database.Test{},
-	// 		"outputs": []database.Output{},
-	// 	})
+	
+	// accessToken, err := database.GetUserAccessToken(id)
+	// if err != nil {
+	// 	apis.ErrorResponse(c, apis.ERROR, err.Error())
 	// 	return
 	// }
-
-	// tests, outputs:= Grade(trace)
+	// traces:=gitlab_api.Get_project_traces("labs-" + id, id, accessToken)
 	// userId,_ := strconv.ParseUint(id, 10, 32)
-	// gradeRecord,_:=database.GetGradeDetailByBranch(uint32(userId),"ch7")
-	// c.JSON(http.StatusOK,gin.H{
-	// 	"tests":gradeRecord.Tests,
-	// 	"outputs":gradeRecord.Outputs,
-	// })
+	// for trace := range traces{
+	// 	tests,outputs := Grade(traces[trace])
+	// 	database.CreateGradeRecord(uint32(userId),trace,tests,outputs)
+	// }
+
+	userId,_ := strconv.ParseUint(id, 10, 32)
+	gradeDetails,_ := database.GetGradeDetailsById(uint32(userId))
+	c.JSON(http.StatusOK,gin.H{
+		"gradeDetails":gradeDetails,
+	})
+}
+
+func GetOsBranchGradeHandler(c *gin.Context){
+	id := c.Query("id")
+	branch := c.Query("branch")
+	userId,_ := strconv.ParseUint(id, 10, 32)
+	gradeRecord,_:=database.GetGradeDetailByBranch(uint32(userId),branch)
+	c.JSON(http.StatusOK,gin.H{
+		"tests":gradeRecord.Tests,
+		"outputs":gradeRecord.Outputs,
+	})
 }
  

@@ -9,7 +9,7 @@ import (
 	"unilab-backend/apis"
 	"unilab-backend/database"
 	"unilab-backend/gitlab_api"
-
+	"unilab-backend/logging"
 	"github.com/gin-gonic/gin"
 	// "encoding/json"
 	// "container/list"
@@ -130,6 +130,7 @@ func Grade(ci_output string) ([]database.Test,[]database.Output){
 
 func GetOsGradeHandler(c *gin.Context){
 	id := c.Query("id")
+	logging.Info("start grade")
 	userId,_ := strconv.ParseUint(id, 10, 32)
 	gradeDetails,_ := database.GetGradeDetailsById(uint32(userId))
 	c.JSON(http.StatusOK,gin.H{

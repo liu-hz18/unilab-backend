@@ -13,6 +13,7 @@ import (
 	"unilab-backend/os"
 	"unilab-backend/taskqueue"
 	"unilab-backend/setting"
+	"unilab-backend/OsServer"
 	"github.com/gin-gonic/gin"
 )
 
@@ -59,6 +60,7 @@ func initRouter() *gin.Engine {
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.GET("/login", auth.UserLoginHandler)
 	router.GET("/callback", auth.GitLabCallBackHandler)
+	router.GET("/Os/Grade", os.GetOsGradeHandler)
 	// router.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
@@ -74,7 +76,7 @@ func initRouter() *gin.Engine {
 		studentApis.GET("/fetch-assignment", apis.GetAssignmentsInfoHandler)
 		studentApis.GET("/fetch-all-testids", apis.FetchAllSubmitsStatus)
 		studentApis.POST("/update-tests", apis.UpdateTestDetails)
-		studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
+		// studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
 		studentApis.GET("/Os/BranchGrade",os.GetOsBranchGradeHandler)
 		studentApis.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	}
@@ -101,6 +103,8 @@ func initRouter() *gin.Engine {
 func main() {
 	logging.Info("Start Golang App")
 	database.InitDB()
+	taskqueue.InitYTaskServer()
+	go OsServer.InitConsumer()
 	// testOs()
 	// database.PreinitDBTestData()
 	gin.SetMode(setting.RunMode)

@@ -2,9 +2,10 @@ package taskqueue
 
 import (
     "log"
-    "fmt"
+    // "fmt"
+    "net/http"
     "unilab-backend/apis"
-	// "unilab-backend/database"
+	"unilab-backend/database"
 	"github.com/gin-gonic/gin"
     // "unilab-backend/apis"
 	"github.com/gojuukaze/YTask/v2"
@@ -42,9 +43,15 @@ func TaskSubmitHandler(c *gin.Context){
 		log.Println(err)
 		apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
 		return
-	}
+	} 
 	// fmt.Println(task)
     taskId,_ := client.Send("os-server","grade",task)
     result,_ := client.GetResult(taskId, 2*time.Second, 300*time.Millisecond)
-    fmt.Println(result)
+    var gradeDetails []database.GradeRecord
+    if result.IsSuccess(){
+        result.Get(0,&gradeDetails)
+    }
+    c.JSON(http.StatusOK,gin.H{
+		"gradeDetails":gradeDetails,
+	})
 }

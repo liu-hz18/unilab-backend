@@ -1,7 +1,7 @@
 package OsServer
 
 import(
-	// "fmt"
+	"fmt"
 	"os"
 	// "bytes"
 	"os/signal"
@@ -17,17 +17,19 @@ import(
 type Task struct {
 	UserID   uint32 
 	CourseType string 
-    CourseName string 
+    CourseName string
+	Token string
     Extra map[string]string
 }
 
 type Result struct{
+	Test_status string `json:"test_status"`
 	Details []GradeRecord `json:"gradeDetails"`
 }
 
 type GradeRecord struct{
 	Id uint32 `json:"Id"`
-	Branch_name string `json:"Branch_name"`
+	Test_name string `json:"Test_name"`
 	Tests []Test `json:"Tests"`
 	Outputs []Output `json:"Outputs"`
 }
@@ -38,6 +40,7 @@ type Test struct{
 	Name string `json:"Name"`
 	Passed bool `json:"Passed"`
 	Score int `json:"Score"`
+	Total_score int `json:"Total_Score"`
 }
 
 type Output struct{
@@ -63,7 +66,7 @@ func TaskGrade(task Task) []GradeRecord{
 
 	client := &http.Client{}
 	params := url.Values{}
-	Url,err := url.Parse("http://localhost:1323/Os/Grade")
+	Url,err := url.Parse("http://localhost:1323/student/Os/Grade")
 	if err != nil{
 		return nil
 	}
@@ -73,7 +76,8 @@ func TaskGrade(task Task) []GradeRecord{
 	if err != nil{
 		return nil
 	}
-	// req.Header.Add("Authorization","Bearer " + access_token)
+	fmt.Println(task.Token)
+	req.Header.Add("Authorization",task.Token)
 	response,err :=client.Do(req)
 	if err != nil{
 		return nil

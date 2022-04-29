@@ -7,7 +7,7 @@ import(
 
 type GradeRecord struct{
 	Id uint32
-	Branch_name string
+	Test_name string
 	Tests []Test
 	Outputs []Output
 }
@@ -18,6 +18,7 @@ type Test struct{
 	Name string
 	Passed bool
 	Score int
+	Total_score int
 }
 
 type Output struct{
@@ -58,15 +59,16 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 	}
 	for _,test := range(tests){
 		_,err:= tx.Exec(`INSERT INTO os_grade_points
-			(point_id,grade_id,point_name,passed,score)
+			(point_id,grade_id,point_name,passed,score,total_score)
 			VALUES
-			(?,?,?,?,?);
+			(?,?,?,?,?,?);
 		`,
 			test.Id,
 			gradeID,
 			test.Name,
 			test.Passed,
 			test.Score,
+			test.Total_score,
 		)
 		if err != nil{
 			_ = tx.Rollback()
@@ -105,13 +107,13 @@ func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error
 	outputs := []Output{}
 	err := db.QueryRow("SELECT os_grade_id,branch_name FROM os_grade WHERE user_id=? AND branch_name=?;",userID,branch_name).Scan(
 		&gradeRecord.Id,
-		&gradeRecord.Branch_name,
+		&gradeRecord.Test_name,
 	)
 	if err != nil{
 		logging.Info(err)
 		return gradeRecord,err
 	}
-	point_rows,err := db.Query("SELECT point_id,point_name,passed,score FROM os_grade_points WHERE grade_id=?;",gradeRecord.Id)
+	point_rows,err := db.Query("SELECT point_id,point_name,passed,score,total_score FROM os_grade_points WHERE grade_id=?;",gradeRecord.Id)
 	if err != nil{
 		logging.Info(err)
 		return gradeRecord,err
@@ -119,7 +121,7 @@ func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error
 	defer point_rows.Close()
 	for point_rows.Next(){
 		var test_point Test
-		err := point_rows.Scan(&test_point.Id,&test_point.Name,&test_point.Passed,&test_point.Score)
+		err := point_rows.Scan(&test_point.Id,&test_point.Name,&test_point.Passed,&test_point.Score,&test_point.Total_score)
 		if err != nil{
 			logging.Info(err)
 			continue
@@ -166,6 +168,7 @@ func GetGradeDetailsById(userID uint32) ([]GradeRecord,error){
 		gradeRecord,err:= GetGradeDetailByBranch(userID,ch)
 		if err != nil{
 			gradeDetails = append(gradeDetails,GradeRecord{0,ch,[]Test{},[]Output{}})
+			logging.Info(err)
 		}
 		gradeDetails = append(gradeDetails,gradeRecord)
 	}

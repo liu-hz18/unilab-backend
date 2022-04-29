@@ -17,6 +17,7 @@ type Task struct {
 	UserID   uint32 `json:"userid" form:"userid" uri:"userid" binding:"required"`
 	CourseType string `json:"coursetype" form:"coursetype" uri:"coursetype" binding:"required"`
     CourseName string `json:"coursename" form:"coursename" uri:"coursename" binding:"required"`
+    Token string
     Extra map[string]string `json:"extra" form:"extra" uri:"extra" binding:"required"`
 }
 
@@ -44,6 +45,7 @@ func TaskSubmitHandler(c *gin.Context){
 		apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
 		return
 	} 
+    task.Token= c.Request.Header.Get("Authorization")
 	// fmt.Println(task)
     taskId,_ := client.Send("os-server","grade",task)
     result,_ := client.GetResult(taskId, 2*time.Second, 300*time.Millisecond)

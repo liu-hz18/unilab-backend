@@ -105,12 +105,12 @@ func Grade(ci_output string) ([]database.Test,[]database.Output){
 		if strings.HasPrefix(line,PASS_PREFIX){
 			n_pass++;
 			cur_n_pass++;
-			tests=append(tests,database.Test{n_pass+n_fail,line[len(PASS_PREFIX):],true,1})
+			tests=append(tests,database.Test{n_pass+n_fail,line[len(PASS_PREFIX):],true,1,1})
 		}
 		if strings.HasPrefix(line,FAIL_PREFIX){
 			n_fail++
 			cur_n_fail++
-			tests=append(tests,database.Test{n_pass+n_fail,line[len(FAIL_PREFIX):],false,0})
+			tests=append(tests,database.Test{n_pass+n_fail,line[len(FAIL_PREFIX):],false,0,1})
 			cur_has_fail=true
 		}
 		if strings.HasPrefix(line,TEST_PASSED_PREFIX){
@@ -132,10 +132,21 @@ func GetOsGradeHandler(c *gin.Context){
 	id := c.Query("id")
 	logging.Info("start grade")
 	userId,_ := strconv.ParseUint(id, 10, 32)
-	gradeDetails,_ := database.GetGradeDetailsById(uint32(userId))
-	c.JSON(http.StatusOK,gin.H{
-		"gradeDetails":gradeDetails,
-	})
+	gradeDetails,err := database.GetGradeDetailsById(uint32(userId))
+	// c.JSON(http.StatusOK,gin.H{
+	// 	"gradeDetails":gradeDetails,
+	// })
+	if err != nil{
+		c.JSON(http.StatusOK,gin.H{
+			"test_status":"FAIL",
+			"gradeDetails":gradeDetails,
+		})
+	}else{
+		c.JSON(http.StatusOK,gin.H{
+			"test_status":"SUCCESS",
+			"gradeDetails":gradeDetails,
+		})
+	}
 }
 
 func GetOsBranchGradeHandler(c *gin.Context){

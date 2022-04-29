@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS `os_grade_points`(
     `point_name` VARCHAR(255) NOT NULL,
     `passed` TINYINT(1) NOT NULL,
     `score` INT UNSIGNED NOT NULL,
+    `total_score` INT UNSIGNED NOT NULL,
     CONSTRAINT os_grade_points_1 FOREIGN KEY (grade_id) REFERENCES os_grade(os_grade_id) ON DELETE CASCADE ON UPDATE CASCADE
 )ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节测试点';
 

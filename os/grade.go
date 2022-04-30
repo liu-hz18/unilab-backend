@@ -11,9 +11,17 @@ import (
 	"unilab-backend/gitlab_api"
 	"unilab-backend/logging"
 	"github.com/gin-gonic/gin"
+	// "io/ioutil"
 	// "encoding/json"
 	// "container/list"
 )
+
+type Task struct {
+	UserID   uint32 `json:"userid" form:"userid" uri:"userid" binding:"required"`
+	CourseType string `json:"coursetype" form:"coursetype" uri:"coursetype" binding:"required"`
+    CourseName string `json:"coursename" form:"coursename" uri:"coursename" binding:"required"`
+    Extra map[string]string `json:"extra" form:"extra" uri:"extra" binding:"required"`
+}
 
 const PASS_PREFIX = "[92m[PASS][0m "
 const FAIL_PREFIX = "[91m[FAIL][0m "
@@ -22,7 +30,6 @@ const COMPILE_FIRST_LINE_PREFIX ="make -C user all CHAPTER="
 var COMPILE_FAILED_PATTERN = regexp.MustCompile(`/make\[\d+\]: .* Error .*\n/`)
 const RUSTSBI_FIRST_LINE_PREFIX = "[rustsbi] RustSBI version "
 var CHECK_FIRST_LINE_PATTERN = `python3 check/ch`
-// var outputs=list.New()
 var outputs []database.Output
 
 func add_to_outputs(cur_output_lines []string,last_output_type string,cur_has_fail bool,cur_n_pass int,cur_n_fail int){
@@ -39,18 +46,18 @@ func add_to_outputs(cur_output_lines []string,last_output_type string,cur_has_fa
 	}else{
 		compile_failure_message=COMPILE_FAILED_PATTERN.FindAllString(raw_text,-1)[0]
 	}
-	var alert_class string
-	if last_output_type=="Check"{
-		if cur_has_fail {
-			alert_class="danger"
-		}else{
-			alert_class="success"
-		}
-	}else if last_output_type=="Compile" && has_compile_failed{
-		alert_class="danger"
-	}else{
-		alert_class="info"
-	}
+	// var alert_class string
+	// if last_output_type=="Check"{
+	// 	if cur_has_fail {
+	// 		alert_class="danger"
+	// 	}else{
+	// 		alert_class="success"
+	// 	}
+	// }else if last_output_type=="Compile" && has_compile_failed{
+	// 	alert_class="danger"
+	// }else{
+	// 	alert_class="info"
+	// }
 	var message string
 	if last_output_type == "Check"{
 		message = "Test Passed: "+strconv.Itoa(cur_n_pass)+" / "+strconv.Itoa(cur_n_pass + cur_n_fail)
@@ -59,7 +66,7 @@ func add_to_outputs(cur_output_lines []string,last_output_type string,cur_has_fa
 	}else{
 		message=""
 	}
-	outputs=append(outputs,database.Output{len(outputs)+1,last_output_type,alert_class,message,raw_text,cur_has_fail || has_compile_failed})
+	outputs=append(outputs,database.Output{len(outputs)+1,last_output_type,message,raw_text})
 }
 
 
@@ -105,12 +112,12 @@ func Grade(ci_output string) ([]database.Test,[]database.Output){
 		if strings.HasPrefix(line,PASS_PREFIX){
 			n_pass++;
 			cur_n_pass++;
-			tests=append(tests,database.Test{n_pass+n_fail,line[len(PASS_PREFIX):],true,1,1})
+			tests=append(tests,database.Test{n_pass+n_fail,line[len(PASS_PREFIX):],1,1})
 		}
 		if strings.HasPrefix(line,FAIL_PREFIX){
 			n_fail++
 			cur_n_fail++
-			tests=append(tests,database.Test{n_pass+n_fail,line[len(FAIL_PREFIX):],false,0,1})
+			tests=append(tests,database.Test{n_pass+n_fail,line[len(FAIL_PREFIX):],0,1})
 			cur_has_fail=true
 		}
 		if strings.HasPrefix(line,TEST_PASSED_PREFIX){
@@ -129,13 +136,17 @@ func Grade(ci_output string) ([]database.Test,[]database.Output){
 }
 
 func GetOsGradeHandler(c *gin.Context){
-	id := c.Query("id")
+	var task Task
+	if err := c.ShouldBindJSON(&task); err != nil {
+		logging.Info(err)
+		apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
+		return
+	} 
+	id := task.UserID
+	logging.Info(id)
 	logging.Info("start grade")
-	userId,_ := strconv.ParseUint(id, 10, 32)
-	gradeDetails,err := database.GetGradeDetailsById(uint32(userId))
-	// c.JSON(http.StatusOK,gin.H{
-	// 	"gradeDetails":gradeDetails,
-	// })
+	// userId,_ := strconv.ParseUint(id, 10, 32)
+	gradeDetails,err := database.GetGradeDetailsById(id)
 	if err != nil{
 		c.JSON(http.StatusOK,gin.H{
 			"test_status":"FAIL",
@@ -174,4 +185,3 @@ func FetchOsGrade(c * gin.Context){
 		database.CreateGradeRecord(uint32(userId),trace,tests,outputs)
 	}
 }
- 

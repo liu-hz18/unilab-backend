@@ -3,23 +3,23 @@ package OsServer
 import(
 	"fmt"
 	"os"
-	// "bytes"
+	"bytes"
 	"os/signal"
 	"syscall"
 	"context"
 	"net/http"
-	"net/url"
+	// "net/url"
 	"io/ioutil"
 	"encoding/json"
 	"github.com/gojuukaze/YTask/v2"
 )
 
 type Task struct {
-	UserID   uint32 
-	CourseType string 
-    CourseName string
-	Token string
-    Extra map[string]string
+	UserID   uint32 `json:"userid" form:"userid" uri:"userid" binding:"required"`
+	CourseType string `json:"coursetype" form:"coursetype" uri:"coursetype" binding:"required"`
+    CourseName string `json:"coursename" form:"coursename" uri:"coursename" binding:"required"`
+    Token string 
+    Extra map[string]string `json:"extra" form:"extra" uri:"extra" binding:"required"`
 }
 
 type Result struct{
@@ -38,7 +38,7 @@ type Test struct{
 	//member definition
 	Id int `json:"Id"`
 	Name string `json:"Name"`
-	Passed bool `json:"Passed"`
+	// Passed bool `json:"Passed"`
 	Score int `json:"Score"`
 	Total_score int `json:"Total_Score"`
 }
@@ -46,41 +46,23 @@ type Test struct{
 type Output struct{
 	Id int `json:"Id"`
 	Type string `json:"Type"`
-	Alert_class string `json:"Alert_class"`
+	// Alert_class string `json:"Alert_class"`
 	Message string `json:"Message"`
 	Content string `json:"Content"`
-	Expand bool `json:"Expand"`
+	// Expand bool `json:"Expand"`
 }
 
 func TaskGrade(task Task) []GradeRecord{
-	// client := &http.Client{}
-	// bytesData,_ := json.Marshal(task)
-	// req,_ := http.NewRequest("POST","http://localhost:1323/student/Os/Grade",bytes.NewReader(bytesData))
-	// response,_ := client.Do(req)
-	// body,_ := ioutil.ReadAll(response.Body)
-	// var result map[string]interface{}
-	// _=json.Unmarshal(body,&result)
-	// fmt.Println("result:")
-	// fmt.Println(result)
-	// return result
-
 	client := &http.Client{}
-	params := url.Values{}
-	Url,err := url.Parse("http://localhost:1323/student/Os/Grade")
+	bytesData,_ := json.Marshal(&task)
+	req,err := http.NewRequest("POST","http://localhost:1323/student/Os/Grade",bytes.NewReader(bytesData))
 	if err != nil{
 		return nil
 	}
-	params.Set("id","2018011302")
-	Url.RawQuery = params.Encode()
-	req,err :=http.NewRequest("GET",Url.String(),nil)
-	if err != nil{
-		return nil
-	}
-	fmt.Println(task.Token)
 	req.Header.Add("Authorization",task.Token)
-	response,err :=client.Do(req)
+	response,err := client.Do(req)
 	if err != nil{
-		return nil
+			return nil
 	}
 	body,err := ioutil.ReadAll(response.Body)
 	if err != nil{
@@ -92,6 +74,34 @@ func TaskGrade(task Task) []GradeRecord{
 	if err != nil{
 		return nil
 	}
+	fmt.Println(result)
+	// client := &http.Client{}
+	// params := url.Values{}
+	// Url,err := url.Parse("http://localhost:1323/student/Os/Grade")
+	// if err != nil{
+	// 	return nil
+	// }
+	// params.Set("id","2018011302")
+	// Url.RawQuery = params.Encode()
+	// req,err :=http.NewRequest("GET",Url.String(),nil)
+	// if err != nil{
+	// 	return nil
+	// }
+	// req.Header.Add("Authorization",task.Token)
+	// response,err :=client.Do(req)
+	// if err != nil{
+	// 	return nil
+	// }
+	// body,err := ioutil.ReadAll(response.Body)
+	// if err != nil{
+	// 	return nil
+	// }
+	// var result Result
+	// // var result []map[string]interface{}
+	// err = json.Unmarshal(body,&result)
+	// if err != nil{
+	// 	return nil
+	// }
 	return result.Details
 }
 

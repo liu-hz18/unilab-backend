@@ -16,7 +16,7 @@ type Test struct{
 	//member definition
 	Id int
 	Name string
-	Passed bool
+	// Passed bool
 	Score int
 	Total_score int
 }
@@ -24,10 +24,10 @@ type Test struct{
 type Output struct{
 	Id int
 	Type string
-	Alert_class string
+	// Alert_class string
 	Message string
 	Content string
-	Expand bool
+	// Expand bool
 }
 
 func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs []Output)(uint32,error){
@@ -59,14 +59,14 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 	}
 	for _,test := range(tests){
 		_,err:= tx.Exec(`INSERT INTO os_grade_points
-			(point_id,grade_id,point_name,passed,score,total_score)
+			(point_id,grade_id,point_name,score,total_score)
 			VALUES
-			(?,?,?,?,?,?);
+			(?,?,?,?,?);
 		`,
 			test.Id,
 			gradeID,
 			test.Name,
-			test.Passed,
+			// test.Passed,
 			test.Score,
 			test.Total_score,
 		)
@@ -78,17 +78,17 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 	}
 	for _,output := range(outputs){
 		_,err:= tx.Exec(`INSERT INTO os_grade_outputs
-			(grade_id,output_id,type,alert_class,message,content,expand)
+			(grade_id,output_id,type,message,content)
 			VALUES
-			(?,?,?,?,?,?,?);
+			(?,?,?,?,?);
 		`,
 			gradeID,
 			output.Id,
 			output.Type,
-			output.Alert_class,
+			// output.Alert_class,
 			output.Message,
 			output.Content,
-			output.Expand,
+			// output.Expand,
 		)
 		if err != nil{
 			_ = tx.Rollback()
@@ -113,7 +113,7 @@ func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error
 		logging.Info(err)
 		return gradeRecord,err
 	}
-	point_rows,err := db.Query("SELECT point_id,point_name,passed,score,total_score FROM os_grade_points WHERE grade_id=?;",gradeRecord.Id)
+	point_rows,err := db.Query("SELECT point_id,point_name,score,total_score FROM os_grade_points WHERE grade_id=?;",gradeRecord.Id)
 	if err != nil{
 		logging.Info(err)
 		return gradeRecord,err
@@ -121,14 +121,14 @@ func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error
 	defer point_rows.Close()
 	for point_rows.Next(){
 		var test_point Test
-		err := point_rows.Scan(&test_point.Id,&test_point.Name,&test_point.Passed,&test_point.Score,&test_point.Total_score)
+		err := point_rows.Scan(&test_point.Id,&test_point.Name,&test_point.Score,&test_point.Total_score)
 		if err != nil{
 			logging.Info(err)
 			continue
 		}
 		tests = append(tests,test_point)
 	}
-	output_rows,err := db.Query("SELECT output_id,type,alert_class,message,content,expand FROM os_grade_outputs WHERE grade_id=?;",gradeRecord.Id)
+	output_rows,err := db.Query("SELECT output_id,type,message,content FROM os_grade_outputs WHERE grade_id=?;",gradeRecord.Id)
 	if err != nil{
 		logging.Info(err)
 		return gradeRecord,err
@@ -136,7 +136,7 @@ func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error
 	defer output_rows.Close()
 	for output_rows.Next(){
 		var output_point Output
-		err := output_rows.Scan(&output_point.Id,&output_point.Type,&output_point.Alert_class,&output_point.Message,&output_point.Content,&output_point.Expand)
+		err := output_rows.Scan(&output_point.Id,&output_point.Type,&output_point.Message,&output_point.Content)
 		if err != nil{
 			logging.Info(err)
 			continue

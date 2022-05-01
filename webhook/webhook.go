@@ -1,9 +1,10 @@
 package webhook
 
 import(
-	"fmt"
+	// "fmt"
 	// "io/ioutil"
 	"strconv"
+	"unilab-backend/os"
 	"unilab-backend/apis"
 	"unilab-backend/gitlab_api"
 	"unilab-backend/database"
@@ -46,7 +47,8 @@ func OsWebhookHandler(c *gin.Context){
 		return
 	}
 	trace:=gitlab_api.Get_job_trace(project_id,job_id,"2018011302",accessToken)
-	fmt.Println(trace)
+	tests,outputs := os.Grade(trace)
+	database.CreateGradeRecord(webhookInfo.UserInfo.UserID,webhookInfo.Attributes.Branch,tests,outputs)
 	c.JSON(http.StatusOK,gin.H{
 		"message":"success",
 	})

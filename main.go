@@ -10,10 +10,11 @@ import (
 	"unilab-backend/judger"
 	"unilab-backend/logging"
 	"unilab-backend/middleware"
+	"unilab-backend/webhook"
 	"unilab-backend/os"
-	"unilab-backend/taskqueue"
+	// "unilab-backend/taskqueue"
 	"unilab-backend/setting"
-	"unilab-backend/OsServer"
+	// "unilab-backend/OsServer"
 	"github.com/gin-gonic/gin"
 )
 
@@ -62,7 +63,8 @@ func initRouter() *gin.Engine {
 	router.GET("/callback", auth.GitLabCallBackHandler)
 	// router.GET("/Os/Grade", os.GetOsGradeHandler)
 	router.GET("/Os/FetchGrade",os.FetchOsGrade)
-	router.POST("/submit-task",taskqueue.TaskSubmitHandler)
+	router.POST("/webhook/os",webhook.OsWebhookHandler)
+	// router.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
 	{
@@ -80,7 +82,7 @@ func initRouter() *gin.Engine {
 		// studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
 		studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
 		studentApis.GET("/Os/BranchGrade",os.GetOsBranchGradeHandler)
-		studentApis.POST("/submit-task",taskqueue.TaskSubmitHandler)
+		// studentApis.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	}
 	teacherApis := router.Group("/teacher")
 	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
@@ -105,8 +107,8 @@ func initRouter() *gin.Engine {
 func main() {
 	logging.Info("Start Golang App")
 	database.InitDB()
-	taskqueue.InitYTaskServer()
-	go OsServer.InitConsumer()
+	// taskqueue.InitYTaskServer()
+	// go OsServer.InitConsumer()
 	// testOs()
 	// database.PreinitDBTestData()
 	gin.SetMode(setting.RunMode)

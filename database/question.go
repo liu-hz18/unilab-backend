@@ -21,34 +21,34 @@ type CreateQuestionForm struct {
 }
 
 type Question struct {
-	ID uint32
-	Title string
-	Tag string
-	Creator string
-	Score string
-	TestCaseNum uint32
-	MemoryLimit uint32
-	TimeLimit uint32
-	Language string
+	ID           uint32
+	Title        string
+	Tag          string
+	Creator      string
+	Score        string
+	TestCaseNum  uint32
+	MemoryLimit  uint32
+	TimeLimit    uint32
+	Language     string
 	TotalTestNum uint32
-	TotalACNum uint32
-	IssueTime time.Time
+	TotalACNum   uint32
+	IssueTime    time.Time
 }
 
 type QuestionInfo struct {
-	ID uint32
-	Title string
-	Tag string
-	Creator string
-	Score string
-	TestCaseNum uint32
-	MemoryLimit uint32
-	TimeLimit uint32
-	Language string
+	ID           uint32
+	Title        string
+	Tag          string
+	Creator      string
+	Score        string
+	TestCaseNum  uint32
+	MemoryLimit  uint32
+	TimeLimit    uint32
+	Language     string
 	TotalTestNum uint32
-	TotalACNum uint32
-	IssueTime string
-	Content string
+	TotalACNum   uint32
+	IssueTime    string
+	Content      string
 	AppendixFile string
 }
 
@@ -110,7 +110,6 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 	return uint32(question_id), nil
 }
 
-
 func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 	res, err := db.Query("SELECT question_id FROM oj_question_course WHERE course_id=?;", courseID)
 	if err != nil {
@@ -156,11 +155,12 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 	return questions, nil
 }
 
-func GetQuestionTitleAndTestCaseNumByID(questionID uint32) (string, uint32, error) {
+func GetQuestionTitleAndTestCaseNumAndLanguageByID(questionID uint32) (string, uint32, string, error) {
 	var title string
 	var num uint32
-	err := db.QueryRow("SELECT question_name, question_testcase_num FROM oj_question WHERE question_id=?;", questionID).Scan(&title, &num)
-	return title, num, err
+	var language string
+	err := db.QueryRow("SELECT question_name, question_testcase_num, question_language FROM oj_question WHERE question_id=?;", questionID).Scan(&title, &num, &language)
+	return title, num, language, err
 }
 
 func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {
@@ -201,7 +201,7 @@ func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {
 		return question, err
 	}
 	defer f.Close()
- 	content, err := ioutil.ReadAll(f)
+	content, err := ioutil.ReadAll(f)
 	if err != nil {
 		logging.Info(err)
 		return question, err

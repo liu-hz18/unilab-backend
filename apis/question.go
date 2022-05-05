@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"unilab-backend/database"
 	"unilab-backend/logging"
 	"unilab-backend/setting"
@@ -14,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var LanguageSupported = []string{"c", "c++", "c++11", "c++14", "c++17", "c++20", "java8", "java11", "java14", "java17", "python2", "python3", "rust", "go", "js"}
 
 func CreateQuestionHandler(c *gin.Context) {
 	var postform database.CreateQuestionForm
@@ -22,7 +24,7 @@ func CreateQuestionHandler(c *gin.Context) {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	logging.Info(postform)	
+	logging.Info(postform)
 	if !database.CheckCourseAccessPermission(postform.CourseID, c.MustGet("user_id").(uint32)) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return
@@ -35,7 +37,7 @@ func CreateQuestionHandler(c *gin.Context) {
 	}
 	// get testcase file
 	testcase := form.File["testcase"]
-	if len(testcase) <= 0 || len(testcase) % 2 != 0 {
+	if len(testcase) <= 0 || len(testcase)%2 != 0 {
 		ErrorResponse(c, INVALID_PARAMS, "Test Cases Should be MORE than ONE PAIR of (*.in & *.ans) files!")
 		return
 	}
@@ -46,10 +48,10 @@ func CreateQuestionHandler(c *gin.Context) {
 		var valid_ans bool = false
 		for _, file := range testcase {
 			filename := filepath.Base(file.Filename)
-			if (!valid_in && filename == fmt.Sprintf("%d.in", i)) {
+			if !valid_in && filename == fmt.Sprintf("%d.in", i) {
 				valid_in = true
 			}
-			if (!valid_ans && filename == fmt.Sprintf("%d.ans", i)) {
+			if !valid_ans && filename == fmt.Sprintf("%d.ans", i) {
 				valid_ans = true
 			}
 		}
@@ -57,6 +59,12 @@ func CreateQuestionHandler(c *gin.Context) {
 			ErrorResponse(c, INVALID_PARAMS, "Test Cases Should be MORE than ONE PAIR of (*.in & *.ans) files!")
 			return
 		}
+	}
+	postform.Language = strings.ToLower(postform.Language)
+	// check language
+	if !utils.ArrayContainsString(postform.Language, LanguageSupported) {
+		ErrorResponse(c, INVALID_PARAMS, "Language ("+postform.Language+") Not Supported.")
+		return
 	}
 	// insert into database
 	question_id, err := database.CreateQuestion(postform, c.MustGet("user_id").(uint32), testCaseNum)
@@ -108,11 +116,10 @@ func CreateQuestionHandler(c *gin.Context) {
 	code := SUCCESS
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
-		"msg": MsgFlags[code],
+		"msg":  MsgFlags[code],
 		"data": data,
 	})
 }
-
 
 func FetchCourseQuestionsHandler(c *gin.Context) {
 	courseid_str := c.Query("courseid")
@@ -190,7 +197,7 @@ func FetchQuestionAppendix(c *gin.Context) {
 	// 以流方式下载文件，可以匹配所有类型的文件
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", "attachment; filename=appendix.zip")
-  	c.Header("Content-Transfer-Encoding", "binary")
-  	c.Header("Cache-Control", "no-cache")
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Cache-Control", "no-cache")
 	c.File(appendix_path)
 }

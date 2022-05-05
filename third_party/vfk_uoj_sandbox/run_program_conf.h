@@ -187,6 +187,7 @@ inline bool is_soft_ban_file(const string &name) {
 	return is_in_set_smart(name, soft_ban_file_name_set) || is_in_set_smart(realpath(name), soft_ban_file_name_set);
 }
 
+// see syscalls at https://gvisor.dev/docs/user_guide/compatibility/linux/amd64/
 #ifdef __x86_64__
 int syscall_max_cnt_list_default[][2] = {
 	{__NR_pread64       , -1},  // Ubuntu 20.04 dynamic link
@@ -205,6 +206,7 @@ int syscall_max_cnt_list_default[][2] = {
 	{__NR_stat          , -1},
 	{__NR_fstat         , -1},
 	{__NR_lstat         , -1},
+	{__NR_newfstatat    , -1},
 	{__NR_lseek         , -1},
 	{__NR_access        , -1},
 	{__NR_dup           , -1},
@@ -243,6 +245,15 @@ int syscall_max_cnt_list_default[][2] = {
 	{__NR_clock_gettime , -1},
 
 	{__NR_restart_syscall, -1},
+
+#ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+	{__NR_set_tid_address,  1},
+	{__NR_set_robust_list,  1},
+	{__NR_rseq           ,  1}, // Not supported on all platforms. 
+	{__NR_prlimit64      ,  1},
+	{__NR_getrandom      , -1},
+	{__NR_futex          , -1},
+#endif
 
 	{-1                 , -1}
 };
@@ -298,8 +309,14 @@ void init_conf(const RunProgramConfig &config) {
 	}
 	statable_file_name_set.insert(config.work_path + "/");
 
-	if (config.type != "java7" && config.type != "java8") {
+	if (config.type != "java8" && config.type != "java11" && config.type != "java14" && config.type != "java17") {
 		add_file_permission(config.program_name, 'r');
+		// add python-precompile read permissons
+		if (config.type == "python2") {
+			add_file_permission(config.program_name + "o", 'r');
+		} else if (config.type == "python3") {
+			add_file_permission(config.program_dir + "__pycache__/", 'r');
+		}
 	} else {
 		int p = config.program_name.find('.');
 		if (p == string::npos) {
@@ -308,8 +325,9 @@ void init_conf(const RunProgramConfig &config) {
 			readable_file_name_set.insert(config.work_path + "/" + config.program_name.substr(0, p) + "/");
 		}
 	}
-	add_file_permission(config.work_path, 'r');
 
+	// add_file_permission(config.work_path, 'r');
+	
 	for (vector<string>::const_iterator it = config.extra_readable_files.begin(); it != config.extra_readable_files.end(); it++) {
 		add_file_permission(*it, 'r');
 	}
@@ -319,6 +337,7 @@ void init_conf(const RunProgramConfig &config) {
 
 	writable_file_name_set.insert("/dev/null");
 
+	// if `syscall_max_cnt[syscall]` is set to be negative, this syscall is permitted and unlimited.
 	if (config.allow_proc) {
 		syscall_max_cnt[__NR_clone          ] = -1;
 		syscall_max_cnt[__NR_fork           ] = -1;
@@ -337,6 +356,7 @@ void init_conf(const RunProgramConfig &config) {
 
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
 		syscall_max_cnt[__NR_prlimit64      ] = -1;
+		syscall_max_cnt[__NR_getrandom      ] = -1;
 		syscall_max_cnt[__NR_getpid         ] = -1;
 		syscall_max_cnt[__NR_sysinfo        ] = -1;
 		# endif
@@ -350,7 +370,8 @@ void init_conf(const RunProgramConfig &config) {
 		readable_file_name_set.insert("/usr/bin/pybuilddir.txt");
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
 		readable_file_name_set.insert("/usr/lib/locale/");
-		readable_file_name_set.insert(config.work_path + "/answer.code");
+		readable_file_name_set.insert("/usr/share/locale/");
+		readable_file_name_set.insert("/tmp/");
 		# endif
 
 		statable_file_name_set.insert("/usr");
@@ -373,10 +394,10 @@ void init_conf(const RunProgramConfig &config) {
 		readable_file_name_set.insert("/usr/bin/python3");
 		readable_file_name_set.insert("/usr/lib/python3/");
 		# ifndef UOJ_JUDGER_PYTHON3_VERSION
-		readable_file_name_set.insert("/usr/bin/python3.4");
-		readable_file_name_set.insert("/usr/lib/python3.4/");
-		readable_file_name_set.insert("/usr/bin/lib/python3.4/");
-		readable_file_name_set.insert("/usr/local/lib/python3.4/");
+		readable_file_name_set.insert("/usr/bin/python3.10");
+		readable_file_name_set.insert("/usr/lib/python3.10/");
+		readable_file_name_set.insert("/usr/bin/lib/python3.10/");
+		readable_file_name_set.insert("/usr/local/lib/python3.10/");
 		# endif
 		# ifdef UOJ_JUDGER_PYTHON3_VERSION
 		readable_file_name_set.insert("/usr/bin/python" UOJ_JUDGER_PYTHON3_VERSION);
@@ -391,21 +412,21 @@ void init_conf(const RunProgramConfig &config) {
 		readable_file_name_set.insert("/usr/lib/dist-python");
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
 		readable_file_name_set.insert("/usr/lib/locale/");
-		readable_file_name_set.insert(config.work_path + "/answer.code");
+		readable_file_name_set.insert("/usr/share/locale/");
 		# endif
 
 		statable_file_name_set.insert("/usr");
 		statable_file_name_set.insert("/usr/bin");
 		statable_file_name_set.insert("/usr/lib");
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
-		statable_file_name_set.insert("/usr/lib/python36.zip");
+		statable_file_name_set.insert("/usr/lib/python310.zip");
 		# endif
-	} else if (config.type == "java7") {
+	} else if (config.type == "java8") {
 		syscall_max_cnt[__NR_gettid         ] = -1;
 		syscall_max_cnt[__NR_set_tid_address] = 1;
-		# ifndef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		// # ifndef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
 		syscall_max_cnt[__NR_set_robust_list] = 14;
-		# endif
+		// # endif
 		syscall_max_cnt[__NR_futex          ] = -1;
 
 		syscall_max_cnt[__NR_uname          ] = 1;
@@ -413,8 +434,10 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_clone          ] = 13;
 
 		syscall_max_cnt[__NR_getdents       ] = 4;
+		syscall_max_cnt[__NR_getdents64     ] = 4; // add for unilab
 
 		syscall_max_cnt[__NR_clock_getres   ] = 2;
+		syscall_max_cnt[__NR_clock_nanosleep] = -1; // add for unilab
 
 		syscall_max_cnt[__NR_setrlimit      ] = 1;
 
@@ -427,30 +450,40 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_sysinfo        ] = -1;
 		syscall_max_cnt[__NR_clone          ] = -1;
 		syscall_max_cnt[__NR_set_robust_list] = -1;
+		syscall_max_cnt[__NR_prctl          ] = -1;
+		syscall_max_cnt[__NR_clone3         ] = -1;
+		syscall_max_cnt[__NR_rseq           ] = -1;
 		# endif
 
 		syscall_should_soft_ban[__NR_socket   ] = true;
 		syscall_should_soft_ban[__NR_connect  ] = true;
 		syscall_should_soft_ban[__NR_geteuid  ] = true;
 		syscall_should_soft_ban[__NR_getuid   ] = true;
+		syscall_should_soft_ban[__NR_getgid   ] = true;
+		syscall_should_soft_ban[__NR_getegid  ] = true;
 
 		soft_ban_file_name_set.insert("/etc/nsswitch.conf");
 		soft_ban_file_name_set.insert("/etc/passwd");
 
-		add_file_permission(abspath(0, string(self_path) + "/../runtime/jdk1.7.0") + "/", 'r');
+		add_file_permission("/usr/lib/jvm/java-8-openjdk-amd64/", 'r');
 		readable_file_name_set.insert("/sys/devices/system/cpu/");
 		readable_file_name_set.insert("/proc/");
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu/");
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu,cpuacct/");
+		readable_file_name_set.insert("/sys/fs/cgroup/memory/");
 		readable_file_name_set.insert("/usr/lib/locale/");
+		readable_file_name_set.insert(config.program_dir + "Main.class");
 		# endif
+		readable_file_name_set.insert("/usr/");
+		readable_file_name_set.insert("/tmp/");
 		statable_file_name_set.insert("/usr/java/");
-		statable_file_name_set.insert("/tmp/");
-	} else if (config.type == "java8") {
+	} else if (config.type == "java11") {
 		syscall_max_cnt[__NR_gettid         ] = -1;
 		syscall_max_cnt[__NR_set_tid_address] = 1;
-		# ifndef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		// # ifndef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
 		syscall_max_cnt[__NR_set_robust_list] = 15;
-		# endif
+		// # endif
 		syscall_max_cnt[__NR_futex          ] = -1;
 
 		syscall_max_cnt[__NR_uname          ] = 1;
@@ -458,8 +491,10 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_clone          ] = 14;
 
 		syscall_max_cnt[__NR_getdents       ] = 4;
+		syscall_max_cnt[__NR_getdents64     ] = 4; // add for unilab
 
 		syscall_max_cnt[__NR_clock_getres   ] = 2;
+		syscall_max_cnt[__NR_clock_nanosleep] = -1; // add for unilab
 
 		syscall_max_cnt[__NR_setrlimit      ] = 1;
 
@@ -472,25 +507,247 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_sysinfo        ] = -1;
 		syscall_max_cnt[__NR_clone          ] = -1;
 		syscall_max_cnt[__NR_set_robust_list] = -1;
+		syscall_max_cnt[__NR_uname          ] = -1;
+		syscall_max_cnt[__NR_clock_getres   ] = -1;
+		syscall_max_cnt[__NR_pread64        ] = -1;
+		syscall_max_cnt[__NR_prctl          ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
+		syscall_max_cnt[__NR_clone3         ] = -1;
+		syscall_max_cnt[__NR_rseq           ] = -1;
 		# endif
 
 		syscall_should_soft_ban[__NR_socket   ] = true;
 		syscall_should_soft_ban[__NR_connect  ] = true;
 		syscall_should_soft_ban[__NR_geteuid  ] = true;
 		syscall_should_soft_ban[__NR_getuid   ] = true;
+		syscall_should_soft_ban[__NR_getgid   ] = true;
+		syscall_should_soft_ban[__NR_getegid  ] = true;
 
 		soft_ban_file_name_set.insert("/etc/nsswitch.conf");
 		soft_ban_file_name_set.insert("/etc/passwd");
 
-		add_file_permission(abspath(0, string(self_path) + "/../runtime/jdk1.8.0") + "/", 'r');
+		add_file_permission("/usr/lib/jvm/java-11-openjdk-amd64/", 'r');
 		readable_file_name_set.insert("/sys/devices/system/cpu/");
 		readable_file_name_set.insert("/proc/");
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu/");
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu,cpuacct/");
+		readable_file_name_set.insert("/sys/fs/cgroup/memory/");
+		readable_file_name_set.insert("/usr/share/java/");
 		readable_file_name_set.insert("/usr/lib/locale/");
 		readable_file_name_set.insert("/etc/oracle/java/usagetracker.properties");
+		readable_file_name_set.insert(config.program_dir + "Main.class");
 		# endif
+		readable_file_name_set.insert("/usr/");
+		readable_file_name_set.insert("/tmp/");
 		statable_file_name_set.insert("/usr/java/");
-		statable_file_name_set.insert("/tmp/");
+		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		statable_file_name_set.insert("/usr/share/");
+		# endif
+	} else if (config.type == "java14") {
+		syscall_max_cnt[__NR_gettid         ] = -1;
+		syscall_max_cnt[__NR_set_tid_address] = 1;
+		// # ifndef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		syscall_max_cnt[__NR_set_robust_list] = 15;
+		// # endif
+		syscall_max_cnt[__NR_futex          ] = -1;
+
+		syscall_max_cnt[__NR_uname          ] = 1;
+
+		syscall_max_cnt[__NR_clone          ] = 14;
+
+		syscall_max_cnt[__NR_getdents       ] = 4;
+		syscall_max_cnt[__NR_getdents64     ] = 4; // add for unilab
+
+		syscall_max_cnt[__NR_clock_getres   ] = 2;
+		syscall_max_cnt[__NR_clock_nanosleep] = -1; // add for unilab
+
+		syscall_max_cnt[__NR_setrlimit      ] = 1;
+
+		syscall_max_cnt[__NR_sched_getaffinity] = -1;
+		syscall_max_cnt[__NR_sched_yield    ] = -1;
+
+		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		syscall_max_cnt[__NR_prlimit64      ] = -1;
+		syscall_max_cnt[__NR_getpid         ] = -1;
+		syscall_max_cnt[__NR_sysinfo        ] = -1;
+		syscall_max_cnt[__NR_clone          ] = -1;
+		syscall_max_cnt[__NR_set_robust_list] = -1;
+		syscall_max_cnt[__NR_uname          ] = -1;
+		syscall_max_cnt[__NR_clock_getres   ] = -1;
+		syscall_max_cnt[__NR_pread64        ] = -1;
+		syscall_max_cnt[__NR_prctl          ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
+		syscall_max_cnt[__NR_clone3         ] = -1;
+		syscall_max_cnt[__NR_rseq           ] = -1;
+		# endif
+
+		syscall_should_soft_ban[__NR_socket   ] = true;
+		syscall_should_soft_ban[__NR_connect  ] = true;
+		syscall_should_soft_ban[__NR_geteuid  ] = true;
+		syscall_should_soft_ban[__NR_getuid   ] = true;
+		syscall_should_soft_ban[__NR_getgid   ] = true;
+		syscall_should_soft_ban[__NR_getegid  ] = true;
+
+		soft_ban_file_name_set.insert("/etc/nsswitch.conf");
+		soft_ban_file_name_set.insert("/etc/passwd");
+
+		add_file_permission("/usr/lib/jvm/java-14-openjdk-amd64/", 'r');
+		readable_file_name_set.insert("/sys/devices/system/cpu/");
+		readable_file_name_set.insert("/proc/");
+		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu/");
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu,cpuacct/");
+		readable_file_name_set.insert("/sys/fs/cgroup/memory/");
+		readable_file_name_set.insert("/usr/share/java/");
+		readable_file_name_set.insert("/usr/lib/locale/");
+		readable_file_name_set.insert("/etc/oracle/java/usagetracker.properties");
+		readable_file_name_set.insert(config.program_dir + "Main.class");
+		# endif
+		readable_file_name_set.insert("/usr/");
+		readable_file_name_set.insert("/tmp/");
+		statable_file_name_set.insert("/usr/java/");
+		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		statable_file_name_set.insert("/usr/share/");
+		# endif
+	} else if (config.type == "java17") {
+		syscall_max_cnt[__NR_gettid         ] = -1;
+		syscall_max_cnt[__NR_set_tid_address] = 1;
+		// # ifndef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		syscall_max_cnt[__NR_set_robust_list] = 15;
+		// # endif
+		syscall_max_cnt[__NR_futex          ] = -1;
+
+		syscall_max_cnt[__NR_uname          ] = 1;
+
+		syscall_max_cnt[__NR_clone          ] = 14;
+
+		syscall_max_cnt[__NR_getdents       ] = 4;
+		syscall_max_cnt[__NR_getdents64     ] = 4; // add for unilab
+
+		syscall_max_cnt[__NR_clock_getres   ] = 2;
+		syscall_max_cnt[__NR_clock_nanosleep] = 1; // add for unilab
+
+		syscall_max_cnt[__NR_setrlimit      ] = 1;
+
+		syscall_max_cnt[__NR_sched_getaffinity] = -1;
+		syscall_max_cnt[__NR_sched_yield    ] = -1;
+
+		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		syscall_max_cnt[__NR_prlimit64      ] = -1;
+		syscall_max_cnt[__NR_getpid         ] = -1;
+		syscall_max_cnt[__NR_sysinfo        ] = -1;
+		syscall_max_cnt[__NR_clone          ] = -1;
+		syscall_max_cnt[__NR_set_robust_list] = -1;
+		syscall_max_cnt[__NR_uname          ] = -1;
+		syscall_max_cnt[__NR_clock_getres   ] = -1;
+		syscall_max_cnt[__NR_pread64        ] = -1;
+		syscall_max_cnt[__NR_prctl          ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
+		syscall_max_cnt[__NR_clone3         ] = -1;
+		syscall_max_cnt[__NR_rseq           ] = -1;
+		# endif
+
+		syscall_should_soft_ban[__NR_socket   ] = true;
+		syscall_should_soft_ban[__NR_connect  ] = true;
+		syscall_should_soft_ban[__NR_geteuid  ] = true;
+		syscall_should_soft_ban[__NR_getuid   ] = true;
+		syscall_should_soft_ban[__NR_getgid   ] = true;
+		syscall_should_soft_ban[__NR_getegid  ] = true;
+
+		soft_ban_file_name_set.insert("/etc/nsswitch.conf");
+		soft_ban_file_name_set.insert("/etc/passwd");
+
+		add_file_permission("/usr/lib/jvm/java-17-oracle-amd64/", 'r');
+		readable_file_name_set.insert("/sys/devices/system/cpu/");
+		readable_file_name_set.insert("/proc/");
+		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu/");
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu,cpuacct/");
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu.max");
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu.weight");
+		readable_file_name_set.insert("/sys/fs/cgroup/memory/");
+		readable_file_name_set.insert("/sys/fs/cgroup/memory.max");
+		readable_file_name_set.insert("/sys/fs/cgroup/user.slice/user-1000.slice/");
+		readable_file_name_set.insert("/usr/share/java/");
+		readable_file_name_set.insert("/usr/lib/locale/");
+		readable_file_name_set.insert("/etc/oracle/java/usagetracker.properties");
+		readable_file_name_set.insert(config.program_dir + "Main.class");
+		# endif
+		readable_file_name_set.insert("/usr/");
+		readable_file_name_set.insert("/tmp/");
+		statable_file_name_set.insert("/usr/java/");
+		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		statable_file_name_set.insert("/usr/share/");
+		# endif
+	} else if (config.type == "go") {
+		syscall_max_cnt[__NR_gettid         ] = -1;
+		syscall_max_cnt[__NR_getpid         ] = -1;
+		syscall_max_cnt[__NR_set_tid_address] = 1;
+		syscall_max_cnt[__NR_set_robust_list] = 1;
+		syscall_max_cnt[__NR_futex          ] = -1;
+
+		syscall_max_cnt[__NR_getdents       ] = -1;
+		syscall_max_cnt[__NR_getdents64     ] = -1;
+
+		syscall_max_cnt[__NR_sched_getaffinity] = -1;
+		syscall_max_cnt[__NR_sched_yield    ] = -1;
+
+		syscall_max_cnt[__NR_clone          ] = -1;
+		syscall_max_cnt[__NR_uname          ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
+
+		syscall_max_cnt[__NR_tgkill         ] = -1;
+
+		syscall_should_soft_ban[__NR_socket   ] = true;
+		syscall_should_soft_ban[__NR_connect  ] = true;
+		syscall_should_soft_ban[__NR_geteuid  ] = true;
+		syscall_should_soft_ban[__NR_getuid   ] = true;
+		syscall_should_soft_ban[__NR_getgid   ] = true;
+		syscall_should_soft_ban[__NR_getegid  ] = true;
+		
+		readable_file_name_set.insert("/sys/kernel/mm/transparent_hugepage/hpage_pmd_size");
+	} else if (config.type == "rust") {
+		syscall_max_cnt[__NR_poll           ] = -1;
+		syscall_max_cnt[__NR_prlimit64      ] = -1;
+
+		syscall_max_cnt[__NR_sched_getaffinity] = -1;
+		syscall_max_cnt[__NR_sched_yield    ] = -1;
+		
+		readable_file_name_set.insert("/proc/self/maps");
+	} else if (config.type == "js") {
+		syscall_max_cnt[__NR_prlimit64      ] = -1;
+
+		syscall_max_cnt[__NR_sched_getaffinity] = -1;
+		syscall_max_cnt[__NR_sched_yield    ] = -1;
+
+		syscall_max_cnt[__NR_clone          ] = -1;
+		syscall_max_cnt[__NR_set_robust_list] = -1;
+		syscall_max_cnt[__NR_getpid         ] = -1;
+		syscall_max_cnt[__NR_clone3         ] = -1;
+		syscall_max_cnt[__NR_rseq           ] = -1;
+
+		syscall_max_cnt[__NR_capget         ] = -1;
+		syscall_max_cnt[__NR_sysinfo        ] = -1;
+
+		syscall_max_cnt[__NR_epoll_create1  ] = -1;
+		syscall_max_cnt[__NR_epoll_ctl      ] = -1;
+		syscall_max_cnt[__NR_epoll_wait     ] = -1;
+			
+		syscall_max_cnt[__NR_pipe2          ] = -1;
+		syscall_max_cnt[__NR_eventfd2       ] = -1;
+		syscall_max_cnt[__NR_statx          ] = -1;
+	
+		syscall_should_soft_ban[__NR_socket   ] = true;
+		syscall_should_soft_ban[__NR_connect  ] = true;
+		syscall_should_soft_ban[__NR_geteuid  ] = true;
+		syscall_should_soft_ban[__NR_getuid   ] = true;
+		syscall_should_soft_ban[__NR_getgid   ] = true;
+		syscall_should_soft_ban[__NR_getegid  ] = true;
+
+		readable_file_name_set.insert("/dev/stdin");
+		readable_file_name_set.insert("/proc/self/maps");
+		readable_file_name_set.insert("/usr/local/node/node-v" UOJ_JUDGER_NODEJS_VERSION "-linux-x64/bin/*");
 	} else if (config.type == "compiler") {
 		syscall_max_cnt[__NR_gettid         ] = -1;
 		syscall_max_cnt[__NR_set_tid_address] = -1;
@@ -532,6 +789,10 @@ void init_conf(const RunProgramConfig &config) {
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
 		syscall_max_cnt[__NR_prlimit64      ] = -1;
 		syscall_max_cnt[__NR_getrandom      ] = -1;
+		syscall_max_cnt[__NR_pread64        ] = -1;
+		syscall_max_cnt[__NR_prctl          ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
+		syscall_max_cnt[__NR_socketpair     ] = -1;
 		# endif
 
 		syscall_should_soft_ban[__NR_socket   ] = true; // for javac
@@ -546,6 +807,9 @@ void init_conf(const RunProgramConfig &config) {
 
 		readable_file_name_set.insert(abspath(0, string(self_path) + "/../runtime") + "/");
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu/");
+		readable_file_name_set.insert("/sys/fs/cgroup/cpu,cpuacct/");
+		readable_file_name_set.insert("/sys/fs/cgroup/memory/");
 		readable_file_name_set.insert("/etc/oracle/java/usagetracker.properties");
 		# endif
 
@@ -555,6 +819,8 @@ void init_conf(const RunProgramConfig &config) {
 		readable_file_name_set.insert("/lib64/");
 		readable_file_name_set.insert("/bin/");
 		readable_file_name_set.insert("/sbin/");
+		// readable_file_name_set.insert("/proc/meminfo");
+		// readable_file_name_set.insert("/proc/self/");
 
 		readable_file_name_set.insert("/sys/devices/system/cpu/");
 		readable_file_name_set.insert("/proc/");
@@ -622,19 +888,17 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		return false;
 	}
 	if (need_show_trace_details) {
-		fprintf(stderr, "syscall  %d\n", (int)syscall);
+		// fprintf(stderr, "syscall  %d\n", (int)syscall);
 	}
 
 	if (syscall_should_soft_ban[syscall]) {
 		soft_ban_syscall(pid, reg);
-	} 
-	// WARN: comment for testing...
-	// else if (syscall_max_cnt[syscall]-- == 0) {
-	// 	if (need_show_trace_details) {
-	// 		fprintf(stderr, "dgs      %d\n", (int)syscall);
-	// 	}
-	// 	return false;
-	// }
+	} else if (syscall_max_cnt[syscall]-- == 0) {
+		if (need_show_trace_details) {
+			fprintf(stderr, "dgs      %d\n", (int)syscall);
+		}
+		return false;
+	}
 
 	if (syscall == __NR_open || syscall == __NR_openat) {
 		reg_val_t fn_addr;
@@ -665,6 +929,8 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 				break;
 			}
 			fprintf(stderr, " %s\n", fn.c_str());
+			// for(set<string>::iterator i=readable_file_name_set.begin();i!=readable_file_name_set.end();i++)
+        	// 	fprintf(stderr, " %s\n", (*i).c_str()); //注意指针运算符
 		}
 
 		bool is_read_only = (flags & O_ACCMODE) == O_RDONLY &&
@@ -726,6 +992,15 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		if (!is_statable_file(fn)) {
 			return on_dgs_file_detect(pid, reg, fn);
 		}
+	} else if (syscall == __NR_newfstatat) {
+		reg_val_t fn_addr = reg.REG_ARG1;
+		string fn = read_abspath_from_regs(fn_addr, pid);
+		if (need_show_trace_details) {
+			fprintf(stderr, "newfstatat     %s\n", fn.c_str());
+		}
+		// if (!is_statable_file(fn)) {
+		// 	return on_dgs_file_detect(pid, reg, fn);
+		// }
 	} else if (syscall == __NR_execve) {
 		reg_val_t fn_addr = reg.REG_ARG0;
 		string fn = read_abspath_from_regs(fn_addr, pid);
@@ -755,7 +1030,7 @@ inline void on_syscall_exit(pid_t pid, bool need_show_trace_details) {
 		if ((long long int)reg.REG_SYSCALL >= 1024) {
 			fprintf(stderr, "ban sys  %lld\n", (long long int)reg.REG_SYSCALL - 1024);
 		} else {
-			fprintf(stderr, "exitsys  %lld (ret %d)\n", (long long int)reg.REG_SYSCALL, (int)reg.REG_RET);
+			// fprintf(stderr, "exitsys  %lld (ret %d)\n", (long long int)reg.REG_SYSCALL, (int)reg.REG_RET);
 		}
 	}
 

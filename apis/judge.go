@@ -1,6 +1,7 @@
 package apis
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -32,9 +33,13 @@ func SubmitCodeHandler(c *gin.Context) {
 		return
 	}
 	// get question name
-	questionName, testCaseNum, err := database.GetQuestionTitleAndTestCaseNumByID(postform.QuestionID)
+	questionName, testCaseNum, questionLanguage, err := database.GetQuestionTitleAndTestCaseNumAndLanguageByID(postform.QuestionID)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
+	if questionLanguage != postform.Language {
+		ErrorResponse(c, INVALID_PARAMS, fmt.Sprintf("Submit Language %s does not match required language %s.", postform.Language, questionLanguage))
 		return
 	}
 	// get test count
@@ -53,6 +58,9 @@ func SubmitCodeHandler(c *gin.Context) {
 	files := form.File["file"]
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
+		if filepath.Ext(file.Filename) == ".java" {
+			filename = "Main.java"
+		}
 		logging.Info("SubmitCodeHandler() receive file: ", filename)
 		dst := submit_base_path + filename
 		if err := c.SaveUploadedFile(file, dst); err != nil {
@@ -67,7 +75,7 @@ func SubmitCodeHandler(c *gin.Context) {
 	code := SUCCESS
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
-		"msg": MsgFlags[code],
+		"msg":  MsgFlags[code],
 		"data": data,
 	})
 	// run test
@@ -113,4 +121,3 @@ func UpdateTestDetails(c *gin.Context) {
 		"data": data,
 	})
 }
-

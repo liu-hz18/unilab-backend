@@ -16,18 +16,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 func testJudger() {
 	config := judger.TestConfig{
-		1,
-		1000,
-		262144,
-		3,
+		TestID:      1,
+		TimeLimit:   1000,       // ms
+		MemoryLimit: 512 * 1024, // KB
+		TestCaseNum: 3,
+		Language:    "go",
 	}
 	result := judger.LaunchTest(config, "../../testcase", "../../program")
 	logging.Info(result)
 }
-
 
 func initRouter() *gin.Engine {
 	router := gin.New()
@@ -81,7 +80,6 @@ func initRouter() *gin.Engine {
 	return router
 }
 
-
 func main() {
 	logging.Info("Start Golang App")
 	database.InitDB()
@@ -90,12 +88,12 @@ func main() {
 	router := initRouter()
 	endPoint := fmt.Sprintf(":%d", setting.HttpPort)
 	maxHeaderBytes := 1 << 20
-	
+
 	server := &http.Server{
-		Addr: endPoint,
-		Handler: router,
-		ReadTimeout: setting.ReadTimeout,
-		WriteTimeout: setting.WriteTimeout,
+		Addr:           endPoint,
+		Handler:        router,
+		ReadTimeout:    setting.ReadTimeout,
+		WriteTimeout:   setting.WriteTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
 	logging.Info("start http server listening ", endPoint)

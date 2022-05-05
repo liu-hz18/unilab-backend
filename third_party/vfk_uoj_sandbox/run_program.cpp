@@ -53,6 +53,7 @@ struct RunProgramConfig
 
 	string program_name;
 	string program_basename;
+	string program_dir;
 	vector<string> argv;
 };
 
@@ -97,7 +98,7 @@ argp_option run_program_argp_options[] =
 	{"add-writable"       , 505, "FILE"        , 0, "Add a writable file"                                   , 11},
 	{"unsafe"             , 501, 0             , 0, "Don't check dangerous syscalls"                        , 12},
 	{"show-trace-details" , 502, 0             , 0, "Show trace details"                                    , 13},
-	{"allow-proc"         , 503, 0             , 0, "Allow fork, exec... etc."                              , 14},
+	{"allow-proc"         , 503, 0             , 0, "Allow fork, exec, vfork, nanosleep, clone... etc."                              , 14},
 	{"add-readable-raw"   , 504, "FILE"        , 0, "Add a readable (don't transform to its real path)"     , 15},
 	{"add-writable-raw"   , 506, "FILE"        , 0, "Add a writable (don't transform to its real path)"     , 15},
 	{"use-rss"            , 507, 0             , 0, "Use RSS as the memory value (use AS as default)"       , 16},
@@ -200,9 +201,9 @@ RunProgramConfig run_program_config;
 void parse_args(int argc, char **argv) {
 	run_program_config.time_limit = 1000;
 	run_program_config.real_time_limit = -1;
-	run_program_config.memory_limit = 262144;
-	run_program_config.output_limit = 32768;
-	run_program_config.stack_limit = 8192;
+	run_program_config.memory_limit = 256*1024;
+	run_program_config.output_limit = 32*1024;
+	run_program_config.stack_limit = 8*1024;
 	run_program_config.input_file_name = "stdin";
 	run_program_config.output_file_name = "stdout";
 	run_program_config.error_file_name = "/dev/null";	// dump away error logs by default
@@ -226,14 +227,21 @@ void parse_args(int argc, char **argv) {
 		}
 	}
 
-	if (run_program_config.type == "java7" || run_program_config.type == "java8") {
+	run_program_config.program_dir = dirname(run_program_config.argv[0]) + "/";
+	if (run_program_config.type == "java8" || run_program_config.type == "java11" || run_program_config.type == "java14" || run_program_config.type == "java17") {
 		run_program_config.program_name = run_program_config.argv[0];
+		run_program_config.argv[0] = basename(run_program_config.argv[0]); // add `basename` for unilab
+		run_program_config.userss = true; // add this for unilab
+	} else if (run_program_config.type == "js" || run_program_config.type == "go") {
+		run_program_config.userss = true;
+		run_program_config.program_name = realpath(run_program_config.argv[0]);
 	} else {
 		run_program_config.program_name = realpath(run_program_config.argv[0]);
 	}
+	
+	run_program_config.program_basename = basename(run_program_config.program_name);
 	if (run_program_config.work_path.empty()) {
 		run_program_config.work_path = dirname(run_program_config.program_name);
-		run_program_config.program_basename = basename(run_program_config.program_name);
 		run_program_config.argv[0] = "./" + run_program_config.program_basename;
 
 		if (chdir(run_program_config.work_path.c_str()) == -1) {
@@ -245,14 +253,27 @@ void parse_args(int argc, char **argv) {
 		string pre[4] = {"/usr/bin/python2.7", "-E", "-s", "-B"};
 		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 4);
 	} else if (run_program_config.type == "python3") {
-		string pre[3] = {"/usr/bin/python3", "-I", "-B"};
-		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 3);
-	} else if (run_program_config.type == "java7") {
-		string pre[3] = {abspath(0, string(self_path) + "/../runtime/jdk1.7.0/bin/java"), "-Xmx1024m", "-Xss1024m"};
+		string pre[3] = {"/usr/bin/python3.10", "-I", "-B"};
 		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 3);
 	} else if (run_program_config.type == "java8") {
-		string pre[3] = {abspath(0, string(self_path) + "/../runtime/jdk1.8.0/bin/java"), "-Xmx1024m", "-Xss1024m"};
-		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 3);
+		// string pre[10] = {"/usr/lib/jvm/java-8-openjdk-amd64/bin/java", "-Xms32m", "-Xmx1024m", "-Xss1m", "-Djava.security.manager", "-Djava.security.policy=/home/cslab/unilab/unilab-backend/policy/java.policy", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", "-classpath", run_program_config.program_dir};
+		// run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 10);
+		string pre[8] = {"/usr/lib/jvm/java-8-openjdk-amd64/bin/java", "-Xms32m", "-Xmx1024m", "-Xss1m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", "-classpath", run_program_config.program_dir};
+		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 8);
+	} else if (run_program_config.type == "java11") {
+		// string pre[10] = {"/usr/lib/jvm/java-11-openjdk-amd64/bin/java", "-Xms32m", "-Xmx1024m", "-Xss1m", "-Djava.security.manager", "-Djava.security.policy=/home/cslab/unilab/unilab-backend/policy/java.policy", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", "-classpath", run_program_config.program_dir};
+		// run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 10);
+		string pre[8] = {"/usr/lib/jvm/java-11-openjdk-amd64/bin/java", "-Xms32m", "-Xmx1024m", "-Xss1m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", "-classpath", run_program_config.program_dir};
+		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 8);
+	} else if (run_program_config.type == "java14") {
+		string pre[8] = {"/usr/lib/jvm/java-14-openjdk-amd64/bin/java", "-Xms32m", "-Xmx1024m", "-Xss1m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", "-classpath", run_program_config.program_dir};
+		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 8);
+	} else if (run_program_config.type == "java17") {
+		string pre[8] = {"/usr/lib/jvm/java-17-oracle-amd64/bin/java", "-Xms32m", "-Xmx1024m", "-Xss1m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", "-classpath", run_program_config.program_dir};
+		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 8);
+	} else if (run_program_config.type == "js") {
+		string pre[1] = {"/usr/bin/node"};
+		run_program_config.argv.insert(run_program_config.argv.begin(), pre, pre + 1);
 	}
 }
 
@@ -330,6 +351,7 @@ void run_child() {
 	for (size_t i = 0; i < run_program_config.argv.size(); i++) {
 		program_c_argv[i] = new char[run_program_config.argv[i].size() + 1];
 		strcpy(program_c_argv[i], run_program_config.argv[i].c_str());
+		// cout << program_c_argv[i] << endl;
 	}
 	program_c_argv[run_program_config.argv.size()] = NULL;
 
@@ -413,9 +435,9 @@ RunResult trace_children() {
 		
 		pid_t pid = wait4(-1, &stat, __WALL, &ruse);
 		if (run_program_config.need_show_trace_details) {
-			if (prev_pid != pid) {
-				cerr << "----------" << pid << "----------" << endl;
-			}
+			// if (prev_pid != pid) {
+			// 	cerr << "----------" << pid << "----------" << endl;
+			// }
 			prev_pid = pid;
 		}
 		if (pid == rp_timer_pid) {
@@ -467,6 +489,7 @@ RunResult trace_children() {
 		}
 		if (usermem > run_program_config.memory_limit) {
 			stop_all();
+			fprintf(stderr, "MLE! mem usage: %d. rss: %d, ras: %d", usermem, userrss, useras);
 			return RunResult(RS_MLE);
 		}
 

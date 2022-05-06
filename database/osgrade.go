@@ -129,10 +129,16 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 }
 
 func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error){
+	var user_git_tsinghua_id string
 	gradeRecord := GradeRecord{}
 	tests := []Test{}
 	outputs := []Output{}
-	err := db.QueryRow("SELECT os_grade_id,branch_name FROM os_grade WHERE user_id=? AND branch_name=?;",userID,branch_name).Scan(
+	err := db.QueryRow("SELECT user_git_tsinghua_id FROM oj_user WHERE user_id=?;",userID).Scan(&user_git_tsinghua_id)
+	if err != nil{
+		logging.Info(err)
+		return gradeRecord,err
+	}
+	err = db.QueryRow("SELECT grade_id,branch_name FROM os_grade_result WHERE user_id=? AND branch_name=?;",user_git_tsinghua_id,branch_name).Scan(
 		&gradeRecord.Id,
 		&gradeRecord.Test_name,
 	)
@@ -177,8 +183,14 @@ func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error
 
 func GetGradeDetailsById(userID uint32) ([]GradeRecord,error){
 	var gradeDetails = []GradeRecord{}
+	var user_git_tsinghua_id string
+	err := db.QueryRow("SELECT user_git_tsinghua_id FROM oj_user WHERE user_id=?;",userID).Scan(&user_git_tsinghua_id)
+	if err != nil{
+		logging.Info(err)
+		return gradeDetails,err
+	}
 	// chs := [...]string{"ch7"}
-	rows,err := db.Query("SELECT branch_name FROM os_grade WHERE user_id=?;",userID)
+	rows,err := db.Query("SELECT branch_name FROM os_grade_result WHERE user_id=?;",user_git_tsinghua_id)
 	if err != nil{
 		logging.Info(err)
 		return gradeDetails,err
@@ -187,7 +199,7 @@ func GetGradeDetailsById(userID uint32) ([]GradeRecord,error){
 	for rows.Next(){
 		var ch string
 		err := rows.Scan(&ch)
-		if err != nil{
+		if err != nil {
 			logging.Info(err)
 			return gradeDetails,err
 		}

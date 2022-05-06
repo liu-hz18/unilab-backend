@@ -106,6 +106,12 @@ func GetUserAccessToken(userid string) (string, error) {
 	return access_token, err
 }
 
+func GetUserGitTsingHuaId(userid string) (string, error){
+	var user_git_tsinghua_id string
+	err := db.QueryRow("SELECT user_git_tsinghua_id from oj_user where user_id=?;",userid).Scan(&user_git_tsinghua_id)
+	return user_git_tsinghua_id,err
+}
+
 
 func CheckUserExist(userid string) bool {
 	var userid_db string

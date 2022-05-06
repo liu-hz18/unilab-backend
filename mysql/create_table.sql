@@ -138,8 +138,9 @@ CREATE TABLE IF NOT EXISTS `os_grade_outputs`(
 CREATE TABLE IF NOT EXISTS `os_grade_result`(
     -- `result_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `grade_id` INT UNSIGNED NOT NULL,
-    `user_id` INT(10) UNSIGNED NOT NULL PRIMARY KEY,
+    `user_id` INT(10) UNSIGNED NOT NULL,
     `branch_name`   VARCHAR(255) NOT NULL,
     `pass_time` INT UNSIGNED NOT NULL, -- CI通过次数
-    `total_time` INT UNSIGNED NOT NULL -- CI总次数
+    `total_time` INT UNSIGNED NOT NULL, -- CI总次数,
+    UNIQUE(user_id,branch_name)
 )ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节成绩总表';

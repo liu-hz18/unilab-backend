@@ -12,9 +12,9 @@ import (
 	"unilab-backend/middleware"
 	"unilab-backend/webhook"
 	"unilab-backend/os"
-	// "unilab-backend/taskqueue"
+	"unilab-backend/taskqueue"
 	"unilab-backend/setting"
-	// "unilab-backend/OsServer"
+	"unilab-backend/OsServer"
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,15 +35,6 @@ func testOs(){
 	database.GetGradeDetailsById(2018011302)
 }
 
-
-	// log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-
-	// database.InitDB()
-	// taskqueue.InitYTaskServer()
-	// // OsServer.InitConsumer()
-	// // database.PreinitDBTestData()
-
-	// router := gin.Default()
 func initRouter() *gin.Engine {
 	router := gin.New()
 	// Set a lower memory limit for multipart forms (default is 32 MiB)
@@ -61,7 +52,7 @@ func initRouter() *gin.Engine {
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.GET("/login", auth.UserLoginHandler)
 	router.GET("/callback", auth.GitLabCallBackHandler)
-	// router.GET("/Os/Grade", os.GetOsGradeHandler)
+	// router.POST("/Os/Grade", os.GetOsGradeHandler)
 	router.GET("/Os/FetchGrade",os.FetchOsGrade)
 	router.POST("/webhook/os",webhook.OsWebhookHandler)
 	// router.POST("/submit-task",taskqueue.TaskSubmitHandler)
@@ -82,7 +73,7 @@ func initRouter() *gin.Engine {
 		// studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
 		studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
 		studentApis.GET("/Os/BranchGrade",os.GetOsBranchGradeHandler)
-		// studentApis.POST("/submit-task",taskqueue.TaskSubmitHandler)
+		studentApis.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	}
 	teacherApis := router.Group("/teacher")
 	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
@@ -107,8 +98,8 @@ func initRouter() *gin.Engine {
 func main() {
 	logging.Info("Start Golang App")
 	database.InitDB()
-	// taskqueue.InitYTaskServer()
-	// go OsServer.InitConsumer()
+	taskqueue.InitYTaskServer()
+	go OsServer.InitConsumer()
 	// testOs()
 	// database.PreinitDBTestData()
 	gin.SetMode(setting.RunMode)

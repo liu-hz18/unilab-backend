@@ -24,7 +24,7 @@ type TestConfig struct {
 	TimeLimit   uint32 // ms
 	MemoryLimit uint32 // KB
 	TestCaseNum uint32
-	Language    string // option: [c, c++, c++11, python2.7, python3, java8, java11]
+	Language    string
 	// TestCaseScore []uint32
 }
 
@@ -140,9 +140,10 @@ func getErrorExitCode(err error) int {
 }
 
 type Response struct {
-	StdOut   string
-	StdErr   string
-	ExitCode int
+	StdOut    string
+	StdErr    string
+	ServerErr string
+	ExitCode  int
 }
 
 func Subprocess(rlimit string, timeout int, executable string, pwd string, args ...string) Response {
@@ -163,7 +164,8 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		logging.Info(err)
-		res.StdErr = err.Error()
+		res.ServerErr = err.Error()
+		res.StdErr = ""
 		res.StdOut = ""
 		res.ExitCode = getErrorExitCode(err)
 		return res
@@ -172,7 +174,8 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		logging.Info(err)
-		res.StdErr = err.Error()
+		res.ServerErr = err.Error()
+		res.StdErr = ""
 		res.StdOut = ""
 		res.ExitCode = getErrorExitCode(err)
 		return res
@@ -183,33 +186,40 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 	err = cmd.Start()
 	if err != nil {
 		logging.Info("start command error: ", err)
-		res.StdErr = err.Error()
+		res.ServerErr = err.Error()
+		res.StdErr = ""
 		res.StdOut = ""
 		res.ExitCode = 1
 		return res
 	}
+	linecounter := 0
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
+	for scanner.Scan() && linecounter < 50 {
 		outContent += scanner.Text() + "\n"
+		linecounter += 1
 	}
 	logging.Info("stdout: ", outContent)
 	scanner = bufio.NewScanner(stderr)
 	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
+	linecounter = 0
+	for scanner.Scan() && linecounter < 50 {
 		errContent += scanner.Text() + "\n"
+		linecounter += 1
 	}
 	logging.Info("stderr: ", errContent)
 	err = cmd.Wait()
 	if err != nil {
 		logging.Info(err, string(outContent), string(errContent))
-		res.StdErr = err.Error()
-		res.StdOut = ""
+		res.StdErr = string(errContent)
+		res.StdOut = string(outContent)
+		res.ServerErr = err.Error()
 		res.ExitCode = getErrorExitCode(err)
 		return res
 	}
 	res.StdOut = string(outContent)
 	res.StdErr = string(errContent)
+	res.ServerErr = ""
 	res.ExitCode = cmd.ProcessState.Sys().(syscall.WaitStatus).ExitStatus()
 	return res
 }
@@ -282,7 +292,11 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	logging.Info(response)
 	if response.ExitCode != 0 {
 		logging.Info("Compile Error: ", response.StdErr)
-		result.CompileResult = response.StdErr
+		if response.StdErr != "" {
+			result.CompileResult = response.StdErr
+		} else {
+			result.CompileResult = response.ServerErr
+		}
 		return result
 	}
 	result.CompileResult = response.StdOut
@@ -302,7 +316,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 			fmt.Sprintf("--in=%s", path.Join(tempDirName, fmt.Sprintf("%d.in", i))),
 			fmt.Sprintf("--out=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
 			fmt.Sprintf("--err=%s", path.Join(tempDirName, fmt.Sprintf("%d.err", i))),
-			"--show-trace-details", // ONLY FOR DEBUG
+			// "--show-trace-details", // ONLY FOR DEBUG
 			path.Join(tempDirName, exeName),
 		)
 		logging.Info("Testcase ", i, " Response: ", response)

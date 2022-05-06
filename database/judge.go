@@ -2,6 +2,9 @@ package database
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path"
+	"path/filepath"
 	"strconv"
 	"time"
 	"unilab-backend/judger"
@@ -171,6 +174,18 @@ type TestDetail struct {
 	TestCases       []TestCaseDetail
 }
 
+type FileInfo struct {
+	Name    string
+	Content string
+	Lint    string
+}
+
+type SubmitDetail struct {
+	Fileinfo []FileInfo
+	Compile  string
+	Extra    string
+}
+
 func GetTestDetailsByIDs(testIDs []uint32) []TestDetail {
 	var testDetails = []TestDetail{}
 	for _, testID := range testIDs {
@@ -249,11 +264,13 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
 	}
 	_, err = tx.Exec(`
 		UPDATE oj_test_run SET
-		compile_result=?
+		compile_result=?,
+		extra_result=?
 		WHERE
 		test_id=?;
 	`,
 		judgerResult.CompileResult,
+		judgerResult.ExtraResult,
 		judgerResult.TestID,
 	)
 	logging.Info("extra result:", judgerResult.ExtraResult)
@@ -282,13 +299,15 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
 				UPDATE oj_testcase_run SET 
 				testcase_run_state=?,
 				testcase_run_time_elapsed=?,
-				testcase_run_memory_usage=?
+				testcase_run_memory_usage=?,
+				testcase_checker_output=?
 				WHERE
 				test_id=? AND testcase_rank=?;
 			`,
 				judger.RunResultMap[code],
 				runResults.TimeElasped,
 				runResults.MemoryUsage,
+				runResults.CheckerOutput,
 				judgerResult.TestID,
 				rank,
 			)
@@ -339,4 +358,42 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
 	_ = tx.Commit()
 	logging.Info("UpdateTestCaseRunResults() commit trans action successfully.")
 	return
+}
+
+func GetSubmitDetail(testID uint32) SubmitDetail {
+	var result = SubmitDetail{}
+	var save_dir string
+	err := db.QueryRow("SELECT compile_result, extra_result, save_dir FROM oj_test_run WHERE test_id=?;", testID).Scan(
+		&result.Compile,
+		&result.Extra,
+		&save_dir,
+	)
+	if err != nil {
+		logging.Info(err)
+		return result
+	}
+	files, err := ioutil.ReadDir(save_dir)
+	if err != nil {
+		logging.Info(err)
+		return result
+	}
+	for _, file := range files {
+		var info FileInfo
+		info.Name = file.Name()
+		path := path.Join(save_dir, info.Name)
+		// read file
+		content_bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			logging.Info(err)
+			return result
+		}
+		info.Content = string(content_bytes)
+		if lint, ok := judger.ExtLint[filepath.Ext(info.Name)]; !ok {
+			info.Lint = ""
+		} else {
+			info.Lint = lint
+		}
+		result.Fileinfo = append(result.Fileinfo, info)
+	}
+	return result
 }

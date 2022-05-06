@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"unilab-backend/OsServer"
 	"unilab-backend/apis"
 	"unilab-backend/auth"
 	"unilab-backend/database"
@@ -70,6 +69,7 @@ func initRouter() *gin.Engine {
 		studentApis.GET("/fetch-assignment", apis.GetAssignmentsInfoHandler)
 		studentApis.GET("/fetch-all-testids", apis.FetchAllSubmitsStatus)
 		studentApis.POST("/update-tests", apis.UpdateTestDetails)
+		studentApis.GET("/fetch-submit-detail", apis.GetSubmitDetail)
 		// studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
 		// studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
 		studentApis.GET("/Os/BranchGrade", os.GetOsBranchGradeHandler)
@@ -97,8 +97,8 @@ func initRouter() *gin.Engine {
 func main() {
 	logging.Info("Start Golang App")
 	database.InitDB()
-	taskqueue.InitYTaskServer()
-	go OsServer.InitConsumer()
+	// taskqueue.InitYTaskServer()
+	// go OsServer.InitConsumer()
 
 	gin.SetMode(setting.RunMode)
 	router := initRouter()

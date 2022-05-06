@@ -51,49 +51,56 @@ type LanguageConfig struct {
 	CompileLimits string
 	RuntimeLimits string
 	Environments  string
+	NeedFile      string
 }
 
+// TODO: add makefile and cmake support
 // judger configs
 var JudgerConfig = map[string]LanguageConfig{
 	"c": {
-		Compile:       "gcc main.c -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -o main.exe -fdiagnostics-color=always",
+		Compile:       "gcc main.c -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -fdiagnostics-color=never -o main.exe",
 		RunType:       "default",
 		Executable:    "main.exe",
 		CompileLimits: GNUCompilerResourceLimiter,
 		RuntimeLimits: CRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.c",
 	},
 	"c++11": {
-		Compile:       "g++ main.cpp -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -std=c++11 -o main.exe -fdiagnostics-color=always",
+		Compile:       "g++ main.cpp -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -std=c++11 -o main.exe -fdiagnostics-color=never",
 		RunType:       "default",
 		Executable:    "main.exe",
 		CompileLimits: GNUCompilerResourceLimiter,
 		RuntimeLimits: CRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.cpp",
 	},
 	"c++14": {
-		Compile:       "g++ main.cpp -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -std=c++14 -o main.exe -fdiagnostics-color=always",
+		Compile:       "g++ main.cpp -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -std=c++14 -o main.exe -fdiagnostics-color=never",
 		RunType:       "default",
 		Executable:    "main.exe",
 		CompileLimits: GNUCompilerResourceLimiter,
 		RuntimeLimits: CRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.cpp",
 	},
 	"c++17": {
-		Compile:       "g++ main.cpp -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -std=c++17 -o main.exe -fdiagnostics-color=always",
+		Compile:       "g++ main.cpp -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -std=c++17 -o main.exe -fdiagnostics-color=never",
 		RunType:       "default",
 		Executable:    "main.exe",
 		CompileLimits: GNUCompilerResourceLimiter,
 		RuntimeLimits: CRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.cpp",
 	},
 	"c++20": {
-		Compile:       "g++ main.cpp -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -std=c++20 -o main.exe -fdiagnostics-color=always",
+		Compile:       "g++ main.cpp -DONLINE_JUDGE -lm -Wall -O2 -fmax-errors=5 -std=c++20 -o main.exe -fdiagnostics-color=never",
 		RunType:       "default",
 		Executable:    "main.exe",
 		CompileLimits: GNUCompilerResourceLimiter,
 		RuntimeLimits: CRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.cpp",
 	},
 	"java8": {
 		Compile:       "/usr/lib/jvm/java-8-openjdk-amd64/bin/javac -encoding UTF-8 Main.java",
@@ -102,6 +109,7 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: JavaRuntimeResourceLimiter,
 		RuntimeLimits: JavaCompilerResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.java",
 	},
 	"java11": {
 		Compile:       "/usr/lib/jvm/java-11-openjdk-amd64/bin/javac -encoding UTF-8 Main.java",
@@ -110,6 +118,7 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: JavaCompilerResourceLimiter,
 		RuntimeLimits: JavaRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.java",
 	},
 	"java14": {
 		Compile:       "/usr/lib/jvm/java-14-openjdk-amd64/bin/javac -encoding UTF-8 Main.java",
@@ -118,6 +127,7 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: JavaCompilerResourceLimiter,
 		RuntimeLimits: JavaRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.java",
 	},
 	"java17": {
 		Compile:       "/usr/lib/jvm/java-17-oracle-amd64/bin/javac -encoding UTF-8 Main.java",
@@ -126,6 +136,7 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: JavaCompilerResourceLimiter,
 		RuntimeLimits: JavaRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.java",
 	},
 	"python2": {
 		Compile:       "/usr/bin/python2.7 -E -s -B -O -c \"import py_compile\nimport sys\ntry:\n    py_compile.compile('main.py', doraise=True)\n    sys.exit(0)\nexcept Exception as e:\n    print e\n    sys.exit(1)\n\"",
@@ -134,6 +145,7 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: PythonCompilerResourceLimiter,
 		RuntimeLimits: PythonRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.py",
 	},
 	"python3": {
 		Compile:       "/usr/bin/python3.10 -I -B -O -c \"import py_compile\nimport sys\ntry:\n    py_compile.compile('main.py', doraise=True)\n    sys.exit(0)\nexcept Exception as e:\n    print(e)\n    sys.exit(1)\n\"",
@@ -142,6 +154,7 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: PythonCompilerResourceLimiter,
 		RuntimeLimits: PythonRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.py",
 	},
 	"rust": {
 		Compile:       "~/.cargo/bin/rustc main.rs -O --color=never -o main.exe",
@@ -150,6 +163,7 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: GNUCompilerResourceLimiter,
 		RuntimeLimits: CRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.rs",
 	},
 	"js": {
 		Compile:       "/usr/bin/node --check main.js",
@@ -158,6 +172,7 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: NodeResourceLimiter,
 		RuntimeLimits: NodeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.js",
 	},
 	"go": {
 		Compile:       "/usr/local/go/bin/go build -ldflags=\"-s -w\" -p 1 -o main.exe main.go",
@@ -166,5 +181,16 @@ var JudgerConfig = map[string]LanguageConfig{
 		CompileLimits: GoCompilerResourceLimiter,
 		RuntimeLimits: GoRuntimeResourceLimiter,
 		Environments:  "",
+		NeedFile:      "main.go",
 	},
+}
+
+var ExtLint = map[string]string{
+	".c":    "text/x-csrc",
+	".cpp":  "text/x-c++src",
+	".py":   "text/x-python",
+	".java": "text/x-java",
+	".js":   "text/javascript",
+	".go":   "text/x-go",
+	".rs":   "text/x-rustsrc",
 }

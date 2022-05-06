@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"unilab-backend/database"
+	"unilab-backend/judger"
 	"unilab-backend/logging"
 	"unilab-backend/setting"
 	"unilab-backend/utils"
@@ -42,6 +43,19 @@ func SubmitCodeHandler(c *gin.Context) {
 		ErrorResponse(c, INVALID_PARAMS, fmt.Sprintf("Submit Language %s does not match required language %s.", postform.Language, questionLanguage))
 		return
 	}
+	// check submit codes
+	files := form.File["file"]
+	var contains_source = false
+	for _, file := range files {
+		filename := filepath.Base(file.Filename)
+		if filename == judger.JudgerConfig[questionLanguage].NeedFile {
+			contains_source = true
+		}
+	}
+	if !contains_source {
+		ErrorResponse(c, INVALID_PARAMS, fmt.Sprintf("Submit Files does not match contain %s.", judger.JudgerConfig[questionLanguage].NeedFile))
+		return
+	}
 	// get test count
 	count, err := database.GetQuestionSubmitCounts(postform.QuestionID, userid)
 	if err != nil {
@@ -55,7 +69,6 @@ func SubmitCodeHandler(c *gin.Context) {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	files := form.File["file"]
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
 		if filepath.Ext(file.Filename) == ".java" {
@@ -115,6 +128,22 @@ func UpdateTestDetails(c *gin.Context) {
 	details := database.GetTestDetailsByIDs(testIDs)
 	data := make(map[string]interface{})
 	data["result"] = details
+	c.JSON(http.StatusOK, gin.H{
+		"code": SUCCESS,
+		"msg":  MsgFlags[SUCCESS],
+		"data": data,
+	})
+}
+
+func GetSubmitDetail(c *gin.Context) {
+	testID, err := utils.StringToUint32(c.Query("testid"))
+	if err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	result := database.GetSubmitDetail(testID)
+	data := make(map[string]interface{})
+	data["result"] = result
 	c.JSON(http.StatusOK, gin.H{
 		"code": SUCCESS,
 		"msg":  MsgFlags[SUCCESS],

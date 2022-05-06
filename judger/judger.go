@@ -338,7 +338,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 			test_case_result.TimeElasped = uint32(time_elasped)
 			test_case_result.MemoryUsage = uint32(memory_usage)
 			test_case_result.ExitCode = int(exit_code)
-			success = (run_status == 0)
+			success = (test_case_result.RunStatus == 0)
 		}
 		// check .ans and .out
 		if success {

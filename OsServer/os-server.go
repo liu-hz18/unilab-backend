@@ -1,15 +1,16 @@
 package OsServer
 
 import (
+	// "fmt"
 	"bytes"
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"unilab-backend/setting"
 
+	// "net/url"
 	"encoding/json"
 	"io/ioutil"
 
@@ -76,7 +77,6 @@ func TaskGrade(task Task) []GradeRecord {
 	if err != nil {
 		return nil
 	}
-	fmt.Println(result)
 	// client := &http.Client{}
 	// params := url.Values{}
 	// Url,err := url.Parse("http://localhost:1323/student/Os/Grade")

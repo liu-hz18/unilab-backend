@@ -71,7 +71,7 @@ func initRouter() *gin.Engine {
 		studentApis.POST("/update-tests", apis.UpdateTestDetails)
 		studentApis.GET("/fetch-submit-detail", apis.GetSubmitDetail)
 		// studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
-		// studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
+		studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
 		studentApis.GET("/Os/BranchGrade", os.GetOsBranchGradeHandler)
 		studentApis.POST("/submit-task", taskqueue.TaskSubmitHandler)
 	}

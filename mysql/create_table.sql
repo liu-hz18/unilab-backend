@@ -105,8 +105,9 @@ CREATE TABLE IF NOT EXISTS `oj_testcase_run`(
 
 CREATE TABLE IF NOT EXISTS `os_grade`(
     `os_grade_id`   INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT(10) UNSIGNED NOT NULL,
-    `branch_name`   VARCHAR(255) NOT NULL
+    -- `user_id` INT(10) UNSIGNED NOT NULL,
+    -- `branch_name`   VARCHAR(255) NOT NULL，
+    `grade_time` DATETIME NOT NULL
     -- `grade` INT UNSIGNED NOT NULL,
     -- `total_grade` INT UNSIGNED NOT NULL,
     -- `trace` VARCHAR(1024) NOT NULL,
@@ -135,8 +136,10 @@ CREATE TABLE IF NOT EXISTS `os_grade_outputs`(
 )ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节测试输出';
 
 CREATE TABLE IF NOT EXISTS `os_grade_result`(
-    `result_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    -- `result_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `grade_id` INT UNSIGNED NOT NULL,
-    `pass_time` INT UNSIGNED NOT NULL,
-    `total_time` INT UNSIGNED NOT NULL
-)ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8 COMMENT='操作系统章节成绩总表';
+    `user_id` INT(10) UNSIGNED NOT NULL PRIMARY KEY,
+    `branch_name`   VARCHAR(255) NOT NULL,
+    `pass_time` INT UNSIGNED NOT NULL, -- CI通过次数
+    `total_time` INT UNSIGNED NOT NULL -- CI总次数
+)ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8 COMMENT='操作系统章节成绩总表';

@@ -3,6 +3,7 @@ package database
 import(
 	// "fmt"
 	"unilab-backend/logging"
+	"time"
 )
 
 type GradeRecord struct{
@@ -30,7 +31,7 @@ type Output struct{
 	// Expand bool
 }
 
-func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs []Output)(uint32,error){
+func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs []Output, test_status string)(error){
 	tx,err := db.Begin()
 	if err != nil{
 		if tx !=nil {
@@ -39,23 +40,23 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 		logging.Info("CreateOsRecord() begin trans action failed: %v", err)
 	}
 	result,err := tx.Exec(`INSERT INTO os_grade
-		(user_id,branch_name)
+		(grade_time)
 		VALUES
-		(?,?);
+		(?);
 	`,
-		userid,
-		branch_name,
+		// userid,
+		time.Now(),
 	)
 	if err != nil{
 		_ = tx.Rollback()
 		logging.Info(err)
-		return 0,err
+		return err
 	}
 	gradeID, err := result.LastInsertId()
 	if err != nil{
 		_ = tx.Rollback()
 		logging.Info(err)
-		return 0, err
+		return err
 	}
 	for _,test := range(tests){
 		_,err:= tx.Exec(`INSERT INTO os_grade_points
@@ -73,7 +74,7 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 		if err != nil{
 			_ = tx.Rollback()
 			logging.Info(err)
-			return 0,err
+			return err
 		}
 	}
 	for _,output := range(outputs){
@@ -93,12 +94,38 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 		if err != nil{
 			_ = tx.Rollback()
 			logging.Info(err)
-			return 0,err
+			return err
 		}
+	}
+	_,err = tx.Exec(`INSERT IGNORE os_grade_result
+		(grade_id,user_id,branch_name,pass_time,total_time)
+		VALUES
+		(?,?,?,?,?);
+	`,
+		gradeID,
+		userid,
+		branch_name,
+		0,
+		0,
+	)
+	if err != nil{
+		_ = tx.Rollback()
+		logging.Info(err)
+		return err
+	}
+	if test_status=="passed"{
+		_,err = tx.Exec(`UPDATE os_grade_result SET pass_time=pass_time+1,total_time=total_time+1,grade_id=? WHERE user_id=? AND branch_name=?`, gradeID, userid, branch_name)
+	}else{
+		_,err = tx.Exec(`UPDATE os_grade_result SET total_time=total_time+1 WHERE user_id=? AND branch_name=?`, userid, branch_name)
+	}
+	if err != nil{
+		_ = tx.Rollback()
+		logging.Info(err)
+		return err
 	}
 	_ = tx.Commit()
 	logging.Info("CreateSubmitRecord() commit trans action successfully.")
-	return uint32(gradeID),nil
+	return nil
 }
 
 func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error){

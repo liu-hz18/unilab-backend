@@ -182,6 +182,6 @@ func FetchOsGrade(c * gin.Context){
 	userId,_ := strconv.ParseUint(id, 10, 32)
 	for trace := range traces{
 		tests,outputs := Grade(traces[trace])
-		database.CreateGradeRecord(uint32(userId),trace,tests,outputs)
+		database.CreateGradeRecord(uint32(userId),trace,tests,outputs,"passed")
 	}
 }

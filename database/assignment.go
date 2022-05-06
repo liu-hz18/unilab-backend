@@ -7,21 +7,21 @@ import (
 )
 
 type CreateAssignmentForm struct {
-	Title       string    `json:"title" form:"title" uri:"title" binding:"required"`
-	Description string `json:"description" form:"description " uri:"description" binding:"required"`
-	BeginTime   string `json:"begintime" form:"begintime" uri:"begintime" binding:"required"`
-	DueTime     string `json:"duetime" form:"duetime" uri:"duetime" binding:"required"`
-	CourseID    uint32 `json:"courseid" form:"courseid" uri:"courseid" binding:"required"`
+	Title       string   `json:"title" form:"title" uri:"title" binding:"required"`
+	Description string   `json:"description" form:"description " uri:"description" binding:"required"`
+	BeginTime   string   `json:"begintime" form:"begintime" uri:"begintime" binding:"required"`
+	DueTime     string   `json:"duetime" form:"duetime" uri:"duetime" binding:"required"`
+	CourseID    uint32   `json:"courseid" form:"courseid" uri:"courseid" binding:"required"`
 	QuestionIDs []uint32 `json:"questionids" form:"questionids" uri:"questionids" binding:"required"`
 }
 
 type CreateAssignmentInfo struct {
 	Title       string    `json:"title" form:"title" uri:"title" binding:"required"`
-	Description string `json:"description" form:"description " uri:"description" binding:"required"`
+	Description string    `json:"description" form:"description " uri:"description" binding:"required"`
 	BeginTime   time.Time `json:"begintime" form:"begintime" uri:"begintime" binding:"required"`
 	DueTime     time.Time `json:"duetime" form:"duetime" uri:"duetime" binding:"required"`
-	CourseID    uint32 `json:"courseid" form:"courseid" uri:"courseid" binding:"required"`
-	QuestionIDs []uint32 `json:"questionids" form:"questionids" uri:"questionids" binding:"required"`
+	CourseID    uint32    `json:"courseid" form:"courseid" uri:"courseid" binding:"required"`
+	QuestionIDs []uint32  `json:"questionids" form:"questionids" uri:"questionids" binding:"required"`
 }
 
 type TestRunInfo struct {
@@ -41,11 +41,11 @@ type AssignmentQuestionInfo struct {
 
 type Assignment struct {
 	ID          uint32
-	Title 	    string
+	Title       string
 	Description string
 	BeginTime   time.Time
-	DueTime 	time.Time
-	Questions []AssignmentQuestionInfo
+	DueTime     time.Time
+	Questions   []AssignmentQuestionInfo
 }
 
 func CreateAssignment(form CreateAssignmentInfo) (uint32, error) {
@@ -98,7 +98,6 @@ func CreateAssignment(form CreateAssignmentInfo) (uint32, error) {
 	logging.Info("CreateAssignment() commit trans action successfully.")
 	return uint32(assignmentID), nil
 }
-
 
 func GetAssignemntInfo(CourseID uint32, UserID uint32) ([]Assignment, error) {
 	// read assignments
@@ -176,7 +175,7 @@ func GetAssignemntInfo(CourseID uint32, UserID uint32) ([]Assignment, error) {
 					logging.Info(err)
 					return nil, err
 				}
-				var ac_count uint32 = 0;
+				var ac_count uint32 = 0
 				for res.Next() {
 					var state string
 					err = res.Scan(&state)
@@ -188,7 +187,7 @@ func GetAssignemntInfo(CourseID uint32, UserID uint32) ([]Assignment, error) {
 						ac_count += 1
 					}
 				}
-				info[idxx].Questions[idxy].Score = (ac_count * info[idxx].Questions[idxy].TotalScore) / info[idxx].Questions[idxy].TestCaseNum;
+				info[idxx].Questions[idxy].Score = (ac_count * info[idxx].Questions[idxy].TotalScore) / info[idxx].Questions[idxy].TestCaseNum
 			}
 		}
 	}

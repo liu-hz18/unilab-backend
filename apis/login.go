@@ -13,12 +13,12 @@ import (
 
 // login router
 type login struct {
-	userid string `validate:"required,len=10"`
+	userid   string `validate:"required,len=10"`
 	password string `validate:"required"`
 }
 
 var permissionMap = map[uint8]string{
-	database.UserAdmin: "admin",
+	database.UserAdmin:   "admin",
 	database.UserTeacher: "teacher",
 	database.UserStudent: "student",
 }
@@ -27,9 +27,9 @@ var permissionMap = map[uint8]string{
 func UserLoginHandler(c *gin.Context) {
 	userid := c.PostForm("userid")
 	password := c.PostForm("password")
-	logging.Info("user id: ", userid,  ", password: ", password)
+	logging.Info("user id: ", userid, ", password: ", password)
 	validator := validator.New()
-	loginInfo := login{userid: userid, password:password}
+	loginInfo := login{userid: userid, password: password}
 	err := validator.Struct(&loginInfo)
 	code := INVALID_PARAMS
 	data := make(map[string]interface{})
@@ -60,7 +60,7 @@ func UserLoginHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
-		"msg": MsgFlags[code],
+		"msg":  MsgFlags[code],
 		"data": data,
 	})
 }

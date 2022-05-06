@@ -14,13 +14,13 @@ const (
 )
 
 type UserInfo struct {
-	ID uint32 `json:"id" form:"id" uri:"id" binding:"required"`
+	ID   uint32 `json:"id" form:"id" uri:"id" binding:"required"`
 	Name string `json:"name" form:"name" uri:"name" binding:"required"`
 }
 
 type CreateUser struct {
-	ID             uint32 
-	UserName       string 
+	ID             uint32
+	UserName       string
 	RealName       string
 	Email          string
 	GitID          uint32
@@ -28,7 +28,6 @@ type CreateUser struct {
 	Type           uint8
 	GitAccessToken string
 }
-
 
 func CreateNewUser(user CreateUser) error {
 	_, err := db.Exec(`INSERT INTO oj_user
@@ -52,7 +51,6 @@ func CreateNewUser(user CreateUser) error {
 	}
 	return nil
 }
-
 
 func UpdateUserAccessToken(userid string, accessToken string) error {
 	_, err := db.Exec(`UPDATE oj_user SET
@@ -98,14 +96,12 @@ func UpdateUserInfo(userid string, info CreateUser) error {
 	return nil
 }
 
-
 func GetUserAccessToken(userid string) (string, error) {
 	var access_token string
 	err := db.QueryRow("SELECT user_token from oj_user where user_id=?;", userid).Scan(&access_token)
 	// logging.Info("GetUserAccessToken()", userid, access_token)
 	return access_token, err
 }
-
 
 func CheckUserExist(userid string) bool {
 	var userid_db string
@@ -188,7 +184,7 @@ func CreateUsersIfNotExists(userInfos []UserInfo, authority uint8, update_auth b
 		return err
 	}
 	// insert new teacher if not existed
-	var insertSqlStr string;
+	var insertSqlStr string
 	if update_auth {
 		insertSqlStr = "INSERT INTO oj_user (user_id, user_real_name, user_type) VALUES "
 	} else {

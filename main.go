@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"unilab-backend/OsServer"
 	"unilab-backend/apis"
 	"unilab-backend/auth"
 	"unilab-backend/database"
@@ -11,6 +12,9 @@ import (
 	"unilab-backend/logging"
 	"unilab-backend/middleware"
 	"unilab-backend/os"
+	"unilab-backend/taskqueue"
+	"unilab-backend/webhook"
+
 	"unilab-backend/setting"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +30,10 @@ func testJudger() {
 	}
 	result := judger.LaunchTest(config, "../../testcase", "../../program")
 	logging.Info(result)
+}
+
+func testOs() {
+	database.GetGradeDetailsById(2018011302)
 }
 
 func initRouter() *gin.Engine {
@@ -45,6 +53,9 @@ func initRouter() *gin.Engine {
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.GET("/login", auth.UserLoginHandler)
 	router.GET("/callback", auth.GitLabCallBackHandler)
+
+	router.GET("/Os/FetchGrade", os.FetchOsGrade)
+	router.POST("/webhook/os", webhook.OsWebhookHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
 	{
@@ -59,7 +70,10 @@ func initRouter() *gin.Engine {
 		studentApis.GET("/fetch-assignment", apis.GetAssignmentsInfoHandler)
 		studentApis.GET("/fetch-all-testids", apis.FetchAllSubmitsStatus)
 		studentApis.POST("/update-tests", apis.UpdateTestDetails)
-		studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
+		// studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
+		// studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
+		studentApis.GET("/Os/BranchGrade", os.GetOsBranchGradeHandler)
+		studentApis.POST("/submit-task", taskqueue.TaskSubmitHandler)
 	}
 	teacherApis := router.Group("/teacher")
 	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
@@ -83,6 +97,8 @@ func initRouter() *gin.Engine {
 func main() {
 	logging.Info("Start Golang App")
 	database.InitDB()
+	taskqueue.InitYTaskServer()
+	go OsServer.InitConsumer()
 
 	gin.SetMode(setting.RunMode)
 	router := initRouter()
@@ -99,5 +115,6 @@ func main() {
 	logging.Info("start http server listening ", endPoint)
 	server.ListenAndServe()
 
+	// testOs()
 	// testJudger()
 }

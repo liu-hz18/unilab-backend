@@ -49,7 +49,7 @@ func InitDB() {
 	// clearTable("oj_user")
 	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_user(
 	// 	user_id INT(10) UNSIGNED NOT NULL PRIMARY KEY,
-	// 	user_name VARCHAR(16) NOT NULL DEFAULT 'unknown', 
+	// 	user_name VARCHAR(16) NOT NULL DEFAULT 'unknown',
 	// 	user_real_name VARCHAR(50) NOT NULL DEFAULT 'unknown',
 	// 	user_email VARCHAR(255) NOT NULL DEFAULT '',
 	// 	user_git_tsinghua_id INT UNSIGNED NOT NULL DEFAULT 0,
@@ -144,7 +144,7 @@ func InitDB() {
 	// 	question_id INT UNSIGNED NOT NULL,
 	// 	course_id INT UNSIGNED NOT NULL,
 	// 	CONSTRAINT c_oj_question_course_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_question_course_2 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE 
+	// 	CONSTRAINT c_oj_question_course_2 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE
 	// ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
 	// if err != nil {
 	// 	logging.Fatal(err)
@@ -168,7 +168,7 @@ func InitDB() {
 	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_test_run(
 	// 	test_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 	// 	test_launch_time DATETIME NOT NULL,
-		
+
 	// 	course_id INT UNSIGNED NOT NULL,
 	// 	question_id INT UNSIGNED NOT NULL,
 	// 	user_id INT(10) UNSIGNED NOT NULL,

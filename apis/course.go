@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 func GetCourseNameHandler(c *gin.Context) {
 	courseid_str := c.Query("courseid")
 	if courseid_str == "" {

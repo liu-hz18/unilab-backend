@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 func CreateAssignmentHandler(c *gin.Context) {
 	var postform database.CreateAssignmentForm
 	if err := c.ShouldBind(&postform); err != nil {
@@ -24,11 +23,11 @@ func CreateAssignmentHandler(c *gin.Context) {
 		return
 	}
 	var form = database.CreateAssignmentInfo{
-		Title: postform.Title,
+		Title:       postform.Title,
 		Description: postform.Description,
-		BeginTime: utils.StringToTime(postform.BeginTime),
-		DueTime: utils.StringToTime(postform.DueTime),
-		CourseID: postform.CourseID,
+		BeginTime:   utils.StringToTime(postform.BeginTime),
+		DueTime:     utils.StringToTime(postform.DueTime),
+		CourseID:    postform.CourseID,
 		QuestionIDs: postform.QuestionIDs,
 	}
 	// check params
@@ -53,11 +52,10 @@ func CreateAssignmentHandler(c *gin.Context) {
 	data["result"] = assignmentID
 	c.JSON(http.StatusOK, gin.H{
 		"code": SUCCESS,
-		"msg": MsgFlags[SUCCESS],
+		"msg":  MsgFlags[SUCCESS],
 		"data": data,
 	})
 }
-
 
 func GetAssignmentsInfoHandler(c *gin.Context) {
 	courseid_str := c.Query("courseid")
@@ -84,8 +82,7 @@ func GetAssignmentsInfoHandler(c *gin.Context) {
 	data["result"] = info
 	c.JSON(http.StatusOK, gin.H{
 		"code": SUCCESS,
-		"msg": MsgFlags[SUCCESS],
+		"msg":  MsgFlags[SUCCESS],
 		"data": data,
 	})
 }
-

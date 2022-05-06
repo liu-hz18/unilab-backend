@@ -63,7 +63,6 @@ func CreateNewAnnouncement(announcementForm CreateAnnouncementForm) (uint32, err
 	return uint32(announcement_id), nil
 }
 
-
 func GetAnnouncementsByCourseID(course_id uint32) ([]Announcement, error) {
 	// read oj_announcement
 	tx, err := db.Begin()
@@ -96,7 +95,6 @@ func GetAnnouncementsByCourseID(course_id uint32) ([]Announcement, error) {
 	logging.Info("GetAnnouncementsByCourseID() commit trans action successfully.")
 	return announcements, nil
 }
-
 
 func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 	info := AnnouncementInfo{}
@@ -131,14 +129,14 @@ func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 		return info, err
 	}
 	// read disk
-	file_path := setting.CourseRootDir + strconv.FormatUint(uint64(course_id), 10) + "_" + course_name + "/announcements/"+ strconv.FormatUint(uint64(annoid), 10) + "_announcement.md"
+	file_path := setting.CourseRootDir + strconv.FormatUint(uint64(course_id), 10) + "_" + course_name + "/announcements/" + strconv.FormatUint(uint64(annoid), 10) + "_announcement.md"
 	f, err := os.Open(file_path)
 	if err != nil {
 		logging.Info(err)
 		return info, err
 	}
 	defer f.Close()
- 	content, err := ioutil.ReadAll(f)
+	content, err := ioutil.ReadAll(f)
 	if err != nil {
 		logging.Info(err)
 		return info, err
@@ -149,13 +147,12 @@ func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 	return info, nil
 }
 
-
 func CheckAnnouncementAccessPermission(annoID, userID uint32) bool {
 	var course_id uint32
 	err := db.QueryRow("SELECT course_id FROM oj_announcement WHERE announcement_id=?;", annoID).Scan(&course_id)
 	if err != nil {
 		logging.Info(err)
-		return false;
+		return false
 	}
 	return CheckCourseAccessPermission(course_id, userID)
 }

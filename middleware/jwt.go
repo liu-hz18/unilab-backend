@@ -42,7 +42,7 @@ func JWTMiddleWare() gin.HandlerFunc {
 		if code != apis.SUCCESS {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code": code,
-				"msg": apis.MsgFlags[code],
+				"msg":  apis.MsgFlags[code],
 				"data": data,
 			})
 			c.Abort()
@@ -56,7 +56,7 @@ func JWTMiddleWare() gin.HandlerFunc {
 			logging.Info("JWTMiddleWare", err.Error())
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code": code,
-				"msg": apis.MsgFlags[code],
+				"msg":  apis.MsgFlags[code],
 				"data": data,
 			})
 			c.Abort()
@@ -68,4 +68,3 @@ func JWTMiddleWare() gin.HandlerFunc {
 		c.Next()
 	}
 }
-

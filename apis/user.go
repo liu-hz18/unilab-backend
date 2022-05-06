@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 func GetAllUsersHandler(c *gin.Context) {
 	userinfos, err := database.GetAllUsersNameAndID()
 	data := make(map[string]interface{})
@@ -20,7 +19,7 @@ func GetAllUsersHandler(c *gin.Context) {
 	data["result"] = userinfos
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
-		"msg": MsgFlags[code],
+		"msg":  MsgFlags[code],
 		"data": data,
 	})
 }
@@ -37,7 +36,7 @@ func GetAllTeachersHandler(c *gin.Context) {
 	data["result"] = userinfos
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
-		"msg": MsgFlags[code],
+		"msg":  MsgFlags[code],
 		"data": data,
 	})
 }

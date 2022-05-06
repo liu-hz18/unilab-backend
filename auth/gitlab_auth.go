@@ -19,46 +19,46 @@ import (
 )
 
 var OauthConfig = &oauth2.Config{
-    ClientID:       setting.ClientID,
-    ClientSecret:   setting.ClientSecret,
-    RedirectURL:    setting.BackEndBaseURL + "/callback",
-    Scopes:         []string{"read_user", "read_api", "read_repository"},
-    Endpoint:       oauth2.Endpoint{
-						AuthURL:  setting.GitLabAuthURL,
-						TokenURL: setting.GitLabTokenURL,
-					},
+	ClientID:     setting.ClientID,
+	ClientSecret: setting.ClientSecret,
+	RedirectURL:  setting.BackEndBaseURL + "/callback",
+	Scopes:       []string{"read_user", "read_api", "read_repository"},
+	Endpoint: oauth2.Endpoint{
+		AuthURL:  setting.GitLabAuthURL,
+		TokenURL: setting.GitLabTokenURL,
+	},
 }
 
 const oauthStateString = "random"
 
 type login struct {
 	username string `validate:"required,len=10"`
-	userid string `validate:"required"`
+	userid   string `validate:"required"`
 }
 
-func UserLoginHandler(c *gin.Context){
+func UserLoginHandler(c *gin.Context) {
 	url := OauthConfig.AuthCodeURL(oauthStateString)
-	c.JSON(http.StatusOK,gin.H{
-		"redirect_url":url,
+	c.JSON(http.StatusOK, gin.H{
+		"redirect_url": url,
 	})
 	// c.Redirect(http.StatusTemporaryRedirect,url)
 }
 
 type UserIdentity struct {
 	Provider string `json:"provider"`
-	UID string `json:"extern_uid"`
+	UID      string `json:"extern_uid"`
 }
 
 type GitLabResponse struct {
-	ID uint32 `json:"id"`
-	UserName string `json:"username"`
-	RealName string `json:"name"`
-	WebURL string `json:"web_url"`
-	Email string `json:"email"`
+	ID         uint32         `json:"id"`
+	UserName   string         `json:"username"`
+	RealName   string         `json:"name"`
+	WebURL     string         `json:"web_url"`
+	Email      string         `json:"email"`
 	Identities []UserIdentity `json:"identities"`
 }
 
-func GitLabCallBackHandler(c *gin.Context){
+func GitLabCallBackHandler(c *gin.Context) {
 	code := c.Query("code")
 	token, err := OauthConfig.Exchange(oauth2.NoContext, code)
 	if err != nil {
@@ -117,13 +117,13 @@ func GitLabCallBackHandler(c *gin.Context){
 		user_type_tmp = database.UserAdmin
 	}
 	newUser := database.CreateUser{
-		ID: user_id,
-		UserName: userinfo.UserName,
-		RealName: userinfo.RealName,
-		Email: userinfo.Email,
-		GitID: userinfo.ID,
-		LastLoginTime: time.Now(),
-		Type:  user_type_tmp, // lowest authority, UserStudent
+		ID:             user_id,
+		UserName:       userinfo.UserName,
+		RealName:       userinfo.RealName,
+		Email:          userinfo.Email,
+		GitID:          userinfo.ID,
+		LastLoginTime:  time.Now(),
+		Type:           user_type_tmp, // lowest authority, UserStudent
 		GitAccessToken: token.AccessToken,
 	}
 	if database.CheckUserExist(user_id_str) {
@@ -162,5 +162,5 @@ func GitLabCallBackHandler(c *gin.Context){
 		query.Add("userid", user_id_str)
 	}
 	query.Add("code", strconv.Itoa(retcode))
-	c.Redirect(http.StatusTemporaryRedirect, setting.FrontEndBaseUrl + "/login?" + query.Encode())
+	c.Redirect(http.StatusTemporaryRedirect, setting.FrontEndBaseUrl+"/login?"+query.Encode())
 }

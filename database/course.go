@@ -13,16 +13,16 @@ const (
 )
 
 type StudentInfo struct {
-	ID uint32 `json:"id" form:"id" uri:"id" binding:"required"`
+	ID   uint32 `json:"id" form:"id" uri:"id" binding:"required"`
 	Name string `json:"name" form:"name" uri:"name" binding:"required"`
 }
 
 type CreateCourseForm struct {
-	CourseName string   `json:"name" form:"name" uri:"name" binding:"required"`
-	CourseType int      `json:"type" form:"type" uri:"type" binding:"required"`
-	Creator    string   `json:"creator" form:"creator" uri:"creator" binding:"required"`
-	Term       string   `json:"term" form:"term" uri:"term" binding:"required"`
-	Teachers   []uint32 `json:"teachers" form:"teachers" uri:"teachers" binding:"required"`
+	CourseName string        `json:"name" form:"name" uri:"name" binding:"required"`
+	CourseType int           `json:"type" form:"type" uri:"type" binding:"required"`
+	Creator    string        `json:"creator" form:"creator" uri:"creator" binding:"required"`
+	Term       string        `json:"term" form:"term" uri:"term" binding:"required"`
+	Teachers   []uint32      `json:"teachers" form:"teachers" uri:"teachers" binding:"required"`
 	Students   []StudentInfo `json:"students" form:"students" uri:"students" binding:"required"`
 }
 
@@ -78,9 +78,9 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 	var insertCourseTeacher string = "INSERT INTO oj_user_course(course_id, user_id, user_type) VALUES "
 	for index, teacherID := range courseform.Teachers {
 		if index < len(courseform.Teachers)-1 {
-			insertCourseTeacher += fmt.Sprintf( "(%d, %d,'%s'),", course_id, teacherID, "teacher")
+			insertCourseTeacher += fmt.Sprintf("(%d, %d,'%s'),", course_id, teacherID, "teacher")
 		} else {
-			insertCourseTeacher += fmt.Sprintf( "(%d, %d,'%s');", course_id, teacherID, "teacher")
+			insertCourseTeacher += fmt.Sprintf("(%d, %d,'%s');", course_id, teacherID, "teacher")
 		}
 	}
 	logging.Info(insertCourseTeacher)
@@ -93,20 +93,20 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 	var insertCourseStudent string = "INSERT INTO oj_user_course(course_id, user_id, user_type) VALUES "
 	var haveStudents bool = false
 	for index, student := range courseform.Students {
-		var existInTeacher bool = false;
+		var existInTeacher bool = false
 		for _, teacherID := range courseform.Teachers {
 			if teacherID == student.ID {
-				existInTeacher = true;
-				break;
+				existInTeacher = true
+				break
 			}
 		}
 		if existInTeacher {
-			continue;
+			continue
 		}
 		if index < len(courseform.Students)-1 {
-			insertCourseStudent += fmt.Sprintf( "(%d, %d,'%s'),", course_id, student.ID, "student")
+			insertCourseStudent += fmt.Sprintf("(%d, %d,'%s'),", course_id, student.ID, "student")
 		} else {
-			insertCourseStudent += fmt.Sprintf( "(%d, %d,'%s');", course_id, student.ID, "student")
+			insertCourseStudent += fmt.Sprintf("(%d, %d,'%s');", course_id, student.ID, "student")
 			haveStudents = true
 		}
 	}
@@ -122,7 +122,6 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 	logging.Info("CreateNewCourse() commit trans action successfully.")
 	return nil
 }
-
 
 type Course struct {
 	CourseID          uint32
@@ -160,11 +159,11 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 		err := db.QueryRow(
 			"SELECT course_id, course_name, course_teacher, course_term, course_type FROM oj_course WHERE course_id=?;",
 			course_id).Scan(
-				&course.CourseID,
-				&course.CourseName,
-				&course.CourseTeacher,
-				&course.CourseTerm,
-				&course.CourseType,
+			&course.CourseID,
+			&course.CourseName,
+			&course.CourseTeacher,
+			&course.CourseTerm,
+			&course.CourseType,
 		)
 		if err != nil {
 			logging.Info(err)
@@ -219,13 +218,12 @@ func GetCourseByID(courseID uint32) (string, error) {
 	return course_name, nil
 }
 
-
 func CheckCourseAccessPermission(courseID, userID uint32) bool {
 	var course_id uint32
 	err := db.QueryRow("SELECT course_id FROM oj_user_course WHERE course_id=? AND user_id=?;", courseID, userID).Scan(&course_id)
 	if err != nil {
 		logging.Info(err)
-		return false;
+		return false
 	}
-	return true;
+	return true
 }

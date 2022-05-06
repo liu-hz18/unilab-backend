@@ -86,7 +86,6 @@ func ErrorResponse(c *gin.Context, code int, msg string) {
 	})
 }
 
-
 func NoAccessResponse(c *gin.Context, msg string) {
 	data := make(map[string]interface{})
 	data["err"] = msg

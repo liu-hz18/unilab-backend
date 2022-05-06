@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 func CreateAnnouncementHandler(c *gin.Context) {
 	// validate params
 	var postform database.CreateAnnouncementForm
@@ -69,11 +68,10 @@ func CreateAnnouncementHandler(c *gin.Context) {
 	code := SUCCESS
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
-		"msg": MsgFlags[code],
+		"msg":  MsgFlags[code],
 		"data": data,
 	})
 }
-
 
 func FetchCourseAnnouncementsHandler(c *gin.Context) {
 	courseid_str := c.Query("courseid")
@@ -103,7 +101,6 @@ func FetchCourseAnnouncementsHandler(c *gin.Context) {
 		"data": data,
 	})
 }
-
 
 func GetAnnouncementHandler(c *gin.Context) {
 	annoid_str := c.Query("annoid")

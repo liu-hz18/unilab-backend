@@ -193,10 +193,15 @@ func FetchOsGrade(c *gin.Context) {
 		apis.ErrorResponse(c, apis.ERROR, err.Error())
 		return
 	}
-	traces := gitlab_api.Get_project_traces("labs-"+id, id, accessToken)
-	userId, _ := strconv.ParseUint(id, 10, 32)
-	for trace := range traces {
-		tests, outputs := Grade(traces[trace])
-		database.CreateGradeRecord(uint32(userId), trace, tests, outputs)
+	user_git_tsinghua_id,err := database.GetUserGitTsingHuaId(id)
+	if err != nil {
+		apis.ErrorResponse(c, apis.ERROR, err.Error())
+		return
+	}
+	traces:=gitlab_api.Get_project_traces("labs-" + id, id, accessToken)
+	userId,_ := strconv.ParseUint(user_git_tsinghua_id, 10, 32)
+	for trace := range traces{
+		tests,outputs := Grade(traces[trace])
+		database.CreateGradeRecord(uint32(userId),trace,tests,outputs,"passed")
 	}
 }

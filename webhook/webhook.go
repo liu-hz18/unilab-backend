@@ -45,10 +45,17 @@ func OsWebhookHandler(c *gin.Context) {
 		apis.ErrorResponse(c, apis.ERROR, err.Error())
 		return
 	}
-	trace := gitlab_api.Get_job_trace(project_id, job_id, "2018011302", accessToken)
-	tests, outputs := os.Grade(trace)
-	database.CreateGradeRecord(webhookInfo.UserInfo.UserID, webhookInfo.Attributes.Branch, tests, outputs)
-	c.JSON(http.StatusOK, gin.H{
-		"message": "success",
+	if webhookInfo.Attributes.Detail_status=="passed" || webhookInfo.Attributes.Detail_status=="failed"{
+		// fmt.Println(trace)
+		trace:=gitlab_api.Get_job_trace(project_id,job_id,"2018011302",accessToken)
+		tests,outputs := os.Grade(trace)
+		database.CreateGradeRecord(webhookInfo.UserInfo.UserID,webhookInfo.Attributes.Branch,tests,outputs,webhookInfo.Attributes.Detail_status)
+	}
+	// tests,outputs := os.Grade(trace)
+	// if detailed_status=="passed" || detailed_status=="failed"{
+	// 	database.CreateGradeRecord(webhookInfo.UserInfo.UserID,webhookInfo.Attributes.Branch,tests,outputs,detailed_status)
+	// }
+	c.JSON(http.StatusOK,gin.H{
+		"message":"success",
 	})
 }

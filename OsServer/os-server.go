@@ -1,19 +1,17 @@
 package OsServer
 
-import (
-	"bytes"
-	"context"
-	"fmt"
-	"net/http"
+import(
+	// "fmt"
 	"os"
+	"bytes"
 	"os/signal"
 	"syscall"
-	"unilab-backend/setting"
-
-	"encoding/json"
+	"context"
+	"net/http"
+	// "net/url"
 	"io/ioutil"
-
-	ytask "github.com/gojuukaze/YTask/v2"
+	"encoding/json"
+	"github.com/gojuukaze/YTask/v2"
 )
 
 type Task struct {
@@ -76,7 +74,6 @@ func TaskGrade(task Task) []GradeRecord {
 	if err != nil {
 		return nil
 	}
-	fmt.Println(result)
 	// client := &http.Client{}
 	// params := url.Values{}
 	// Url,err := url.Parse("http://localhost:1323/student/Os/Grade")

@@ -71,9 +71,9 @@ func initRouter() *gin.Engine {
 		studentApis.GET("/fetch-all-testids", apis.FetchAllSubmitsStatus)
 		studentApis.POST("/update-tests", apis.UpdateTestDetails)
 		// studentApis.GET("/Os/Grade", os.GetOsGradeHandler)
-		// studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
-		studentApis.GET("/Os/BranchGrade", os.GetOsBranchGradeHandler)
-		studentApis.POST("/submit-task", taskqueue.TaskSubmitHandler)
+		studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
+		studentApis.GET("/Os/BranchGrade",os.GetOsBranchGradeHandler)
+		studentApis.POST("/submit-task",taskqueue.TaskSubmitHandler)
 	}
 	teacherApis := router.Group("/teacher")
 	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
@@ -99,7 +99,6 @@ func main() {
 	database.InitDB()
 	taskqueue.InitYTaskServer()
 	go OsServer.InitConsumer()
-
 	gin.SetMode(setting.RunMode)
 	router := initRouter()
 	endPoint := fmt.Sprintf(":%d", setting.HttpPort)

@@ -136,7 +136,7 @@ func FetchCourseQuestionsHandler(c *gin.Context) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return
 	}
-	questions, err := database.GetQuestionsByCourseID(uint32(courseID))
+	questions, err := database.GetQuestionsByCourseID(uint32(courseID), c.MustGet("user_id").(uint32))
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return

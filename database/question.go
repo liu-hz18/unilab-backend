@@ -15,7 +15,7 @@ type CreateQuestionForm struct {
 	CourseID    uint32 `json:"courseid" form:"courseid" uri:"courseid" binding:"required"`
 	TimeLimit   uint32 `json:"timeLimit" form:"timeLimit" uri:"timeLimit" binding:"required"`
 	MemoryLimit uint32 `json:"memoryLimit" form:"memoryLimit" uri:"memoryLimit" binding:"required"`
-	Tag         string `json:"tag" form:"tag" uri:"tag" binding:"required"`
+	Tag         string `json:"tag" form:"tag" uri:"tag"`
 	Language    string `json:"language" form:"language" uri:"language" binding:"required"`
 	TotalScore  uint32 `json:"totalScore" form:"totalScore" uri:"totalScore" binding:"required"`
 }
@@ -25,7 +25,8 @@ type Question struct {
 	Title        string
 	Tag          string
 	Creator      string
-	Score        string
+	Score        uint32
+	UserMaxScore uint32
 	TestCaseNum  uint32
 	MemoryLimit  uint32
 	TimeLimit    uint32
@@ -110,7 +111,7 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 	return uint32(question_id), nil
 }
 
-func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
+func GetQuestionsByCourseID(courseID uint32, userID uint32) ([]Question, error) {
 	res, err := db.Query("SELECT question_id FROM oj_question_course WHERE course_id=?;", courseID)
 	if err != nil {
 		logging.Info(err)
@@ -143,6 +144,10 @@ func GetQuestionsByCourseID(courseID uint32) ([]Question, error) {
 			logging.Info(err)
 			return nil, err
 		}
+		// read testid and get max score
+		err = db.QueryRow("SELECT score FROM oj_test_run WHERE course_id=? AND question_id=? AND user_id=? ORDER BY score DESC;", courseID, question.ID, userID).Scan(
+			&question.UserMaxScore,
+		)
 		username, err := GetUserName(strconv.FormatUint(uint64(userid), 10))
 		if err != nil {
 			logging.Info(err)

@@ -48,6 +48,7 @@ func SubmitCodeHandler(c *gin.Context) {
 	var contains_source = false
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
+		logging.Info("SubmitCodeHandler() receive file: ", filename)
 		if filename == judger.JudgerConfig[questionLanguage].NeedFile {
 			contains_source = true
 		}
@@ -71,10 +72,9 @@ func SubmitCodeHandler(c *gin.Context) {
 	}
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
-		if filepath.Ext(file.Filename) == ".java" {
+		if filename == "main.java" {
 			filename = "Main.java"
 		}
-		logging.Info("SubmitCodeHandler() receive file: ", filename)
 		dst := submit_base_path + filename
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())

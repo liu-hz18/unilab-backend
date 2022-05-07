@@ -319,7 +319,7 @@ void init_conf(const RunProgramConfig &config) {
 		}
 	} else {
 		int p = config.program_name.find('.');
-		if (p == string::npos) {
+		if (p == int(string::npos)) {
 			readable_file_name_set.insert(config.work_path + "/");
 		} else {
 			readable_file_name_set.insert(config.work_path + "/" + config.program_name.substr(0, p) + "/");
@@ -453,6 +453,10 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_prctl          ] = -1;
 		syscall_max_cnt[__NR_clone3         ] = -1;
 		syscall_max_cnt[__NR_rseq           ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
+		syscall_max_cnt[__NR_uname          ] = -1;
+		syscall_max_cnt[__NR_clock_getres   ] = -1;
+		syscall_max_cnt[__NR_pread64        ] = -1;
 		# endif
 
 		syscall_should_soft_ban[__NR_socket   ] = true;
@@ -507,13 +511,13 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_sysinfo        ] = -1;
 		syscall_max_cnt[__NR_clone          ] = -1;
 		syscall_max_cnt[__NR_set_robust_list] = -1;
+		syscall_max_cnt[__NR_prctl          ] = -1;
+		syscall_max_cnt[__NR_clone3         ] = -1;
+		syscall_max_cnt[__NR_rseq           ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
 		syscall_max_cnt[__NR_uname          ] = -1;
 		syscall_max_cnt[__NR_clock_getres   ] = -1;
 		syscall_max_cnt[__NR_pread64        ] = -1;
-		syscall_max_cnt[__NR_prctl          ] = -1;
-		syscall_max_cnt[__NR_nanosleep      ] = -1;
-		syscall_max_cnt[__NR_clone3         ] = -1;
-		syscall_max_cnt[__NR_rseq           ] = -1;
 		# endif
 
 		syscall_should_soft_ban[__NR_socket   ] = true;
@@ -573,13 +577,13 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_sysinfo        ] = -1;
 		syscall_max_cnt[__NR_clone          ] = -1;
 		syscall_max_cnt[__NR_set_robust_list] = -1;
+		syscall_max_cnt[__NR_prctl          ] = -1;
+		syscall_max_cnt[__NR_clone3         ] = -1;
+		syscall_max_cnt[__NR_rseq           ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
 		syscall_max_cnt[__NR_uname          ] = -1;
 		syscall_max_cnt[__NR_clock_getres   ] = -1;
 		syscall_max_cnt[__NR_pread64        ] = -1;
-		syscall_max_cnt[__NR_prctl          ] = -1;
-		syscall_max_cnt[__NR_nanosleep      ] = -1;
-		syscall_max_cnt[__NR_clone3         ] = -1;
-		syscall_max_cnt[__NR_rseq           ] = -1;
 		# endif
 
 		syscall_should_soft_ban[__NR_socket   ] = true;
@@ -626,7 +630,7 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_getdents64     ] = 4; // add for unilab
 
 		syscall_max_cnt[__NR_clock_getres   ] = 2;
-		syscall_max_cnt[__NR_clock_nanosleep] = 1; // add for unilab
+		syscall_max_cnt[__NR_clock_nanosleep] = -1; // add for unilab
 
 		syscall_max_cnt[__NR_setrlimit      ] = 1;
 
@@ -639,13 +643,13 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_sysinfo        ] = -1;
 		syscall_max_cnt[__NR_clone          ] = -1;
 		syscall_max_cnt[__NR_set_robust_list] = -1;
+		syscall_max_cnt[__NR_prctl          ] = -1;
+		syscall_max_cnt[__NR_clone3         ] = -1;
+		syscall_max_cnt[__NR_rseq           ] = -1;
+		syscall_max_cnt[__NR_nanosleep      ] = -1;
 		syscall_max_cnt[__NR_uname          ] = -1;
 		syscall_max_cnt[__NR_clock_getres   ] = -1;
 		syscall_max_cnt[__NR_pread64        ] = -1;
-		syscall_max_cnt[__NR_prctl          ] = -1;
-		syscall_max_cnt[__NR_nanosleep      ] = -1;
-		syscall_max_cnt[__NR_clone3         ] = -1;
-		syscall_max_cnt[__NR_rseq           ] = -1;
 		# endif
 
 		syscall_should_soft_ban[__NR_socket   ] = true;
@@ -659,6 +663,7 @@ void init_conf(const RunProgramConfig &config) {
 		soft_ban_file_name_set.insert("/etc/passwd");
 
 		add_file_permission("/usr/lib/jvm/java-17-oracle-amd64/", 'r');
+		// /usr/lib/jvm/java-17-oracle-amd64/lib/glibc-hwcaps/x86-64-v3/libz.so.1
 		readable_file_name_set.insert("/sys/devices/system/cpu/");
 		readable_file_name_set.insert("/proc/");
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
@@ -884,11 +889,12 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 	}
 
 	int syscall = (int)reg.REG_SYSCALL;
-	if (0 > syscall || syscall >= 1000)  {
-		return false;
-	}
 	if (need_show_trace_details) {
 		// fprintf(stderr, "syscall  %d\n", (int)syscall);
+	}
+
+	if (0 > syscall || syscall >= 1000)  {
+		return false;
 	}
 
 	if (syscall_should_soft_ban[syscall]) {

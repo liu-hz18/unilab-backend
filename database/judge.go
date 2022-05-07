@@ -90,11 +90,13 @@ func RunTest(testID uint32) {
 	var timeLimit uint32
 	var memoryLimit uint32
 	var testcaseNum uint32
-	err = db.QueryRow("SELECT question_name, question_time_limit, question_memory_limit, question_testcase_num from oj_question WHERE question_id=?;", questionID).Scan(
+	var totalScore uint32
+	err = db.QueryRow("SELECT question_name, question_time_limit, question_memory_limit, question_testcase_num, question_score from oj_question WHERE question_id=?;", questionID).Scan(
 		&name,
 		&timeLimit,
 		&memoryLimit,
 		&testcaseNum,
+		&totalScore,
 	)
 	if err != nil {
 		logging.Error(err)
@@ -109,6 +111,7 @@ func RunTest(testID uint32) {
 		MemoryLimit: memoryLimit * 1024, // frontend:MB -> backend:KB
 		TestCaseNum: testcaseNum,
 		Language:    language,
+		TotalScore:  totalScore,
 	}
 	result := judger.LaunchTest(config, questionDir, programDir)
 	logging.Info("run result: ", result)
@@ -262,30 +265,15 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
 		}
 		logging.Info("UpdateTestCaseRunResults() begin trans action failed: ", err)
 	}
-	_, err = tx.Exec(`
-		UPDATE oj_test_run SET
-		compile_result=?,
-		extra_result=?
-		WHERE
-		test_id=?;
-	`,
-		judgerResult.CompileResult,
-		judgerResult.ExtraResult,
-		judgerResult.TestID,
-	)
-	logging.Info("extra result:", judgerResult.ExtraResult)
-	if err != nil {
-		_ = tx.Rollback()
-		logging.Info(err)
-		return
-	}
 	var code uint32
 	var is_ac bool = true
+	var passCount uint32 = 0
 	if len(judgerResult.RunResults) == int(judgerResult.CaseNum) {
 		for rank, runResults := range judgerResult.RunResults {
 			if runResults.RunStatus == judger.RunFinished {
 				if runResults.Accepted {
 					code = judger.RunFinished
+					passCount += 1
 				} else {
 					code = judger.WrongAnswer
 					is_ac = false
@@ -345,6 +333,26 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
 				return
 			}
 		}
+	}
+	totalScore := utils.CeilDivUint32(judgerResult.TotalScore*passCount, judgerResult.CaseNum)
+	_, err = tx.Exec(`
+		UPDATE oj_test_run SET
+		compile_result=?,
+		extra_result=?,
+		score=?
+		WHERE
+		test_id=?;
+	`,
+		judgerResult.CompileResult,
+		judgerResult.ExtraResult,
+		totalScore,
+		judgerResult.TestID,
+	)
+	logging.Info("extra result:", judgerResult.ExtraResult)
+	if err != nil {
+		_ = tx.Rollback()
+		logging.Info(err)
+		return
 	}
 	if is_ac {
 		// update question submit count

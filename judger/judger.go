@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 	"unilab-backend/logging"
+	"unilab-backend/setting"
 )
 
 type TestConfig struct {
@@ -25,6 +26,7 @@ type TestConfig struct {
 	MemoryLimit uint32 // KB
 	TestCaseNum uint32
 	Language    string
+	TotalScore  uint32
 	// TestCaseScore []uint32
 }
 
@@ -44,6 +46,7 @@ type TestResult struct {
 	CaseNum       uint32
 	CompileResult string
 	ExtraResult   string
+	TotalScore    uint32
 	RunResults    []TestCaseResult
 }
 
@@ -192,22 +195,34 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 		res.ExitCode = 1
 		return res
 	}
-	linecounter := 0
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() && linecounter < 50 {
-		outContent += scanner.Text() + "\n"
-		linecounter += 1
+	if setting.RunMode == "debug" {
+		for scanner.Scan() {
+			outContent += scanner.Text() + "\n"
+		}
+		logging.Info("stdout: ", outContent)
+	} else {
+		linecounter := 0
+		for scanner.Scan() && linecounter < 50 {
+			outContent += scanner.Text() + "\n"
+			linecounter += 1
+		}
 	}
-	logging.Info("stdout: ", outContent)
 	scanner = bufio.NewScanner(stderr)
 	scanner.Split(bufio.ScanLines)
-	linecounter = 0
-	for scanner.Scan() && linecounter < 50 {
-		errContent += scanner.Text() + "\n"
-		linecounter += 1
+	if setting.RunMode == "debug" {
+		for scanner.Scan() {
+			errContent += scanner.Text() + "\n"
+		}
+		logging.Info("stderr: ", errContent)
+	} else {
+		linecounter := 0
+		for scanner.Scan() && linecounter < 50 {
+			errContent += scanner.Text() + "\n"
+			linecounter += 1
+		}
 	}
-	logging.Info("stderr: ", errContent)
 	err = cmd.Wait()
 	if err != nil {
 		logging.Info(err, string(outContent), string(errContent))
@@ -229,6 +244,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	result.QuestionID = cfg.QuestionID
 	result.TestID = cfg.TestID
 	result.CaseNum = cfg.TestCaseNum
+	result.TotalScore = cfg.TotalScore
 	result.CompileResult = ""
 	result.ExtraResult = ""
 	result.RunResults = []TestCaseResult{}
@@ -276,12 +292,14 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	}
 	// switch languages
 	var compileCmd, runType, exeName, runtimeRlimits, compileRlimits string
+	var timeOut int = 0
 	if langConf, ok := JudgerConfig[cfg.Language]; ok {
 		compileCmd = langConf.Compile
 		runType = langConf.RunType
 		exeName = langConf.Executable
 		runtimeRlimits = langConf.RuntimeLimits
 		compileRlimits = langConf.CompileLimits
+		timeOut = langConf.Timeout
 	} else {
 		result.CompileResult = "Language Not Supported: " + cfg.Language
 		logging.Error(result.CompileResult)
@@ -303,20 +321,20 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	// run testcase
 	for i := 1; i <= int(cfg.TestCaseNum); i++ {
 		response = Subprocess(
-			runtimeRlimits, 30, "./prebuilt/uoj_run", "", // NOTE: work in current dir, not in tmp dir
+			runtimeRlimits, timeOut, "./prebuilt/uoj_run", "", // NOTE: work in current dir, not in tmp dir
 			fmt.Sprintf("--tl=%d", cfg.TimeLimit),
 			fmt.Sprintf("--rtl=%d", cfg.TimeLimit+1000),
 			fmt.Sprintf("--ml=%d", cfg.MemoryLimit),
 			fmt.Sprintf("--ol=%d", (64*1024)),
 			fmt.Sprintf("--sl=%d", (64*1024)),
-			fmt.Sprintf("--work-path=."),
+			"--work-path=.",
 			fmt.Sprintf("--res=%s", path.Join(tempDirName, "run_res.txt")),
 			fmt.Sprintf("--err=%s", "/dev/stdout"),
 			fmt.Sprintf("--type=%s", runType),
 			fmt.Sprintf("--in=%s", path.Join(tempDirName, fmt.Sprintf("%d.in", i))),
 			fmt.Sprintf("--out=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
 			fmt.Sprintf("--err=%s", path.Join(tempDirName, fmt.Sprintf("%d.err", i))),
-			// "--show-trace-details", // ONLY FOR DEBUG
+			"--show-trace-details", // ONLY FOR DEBUG
 			path.Join(tempDirName, exeName),
 		)
 		logging.Info("Testcase ", i, " Response: ", response)
@@ -358,7 +376,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 		if success {
 			response = Subprocess(
 				// need `sudo` to run with `CheckerResourceLimiter`
-				"", 30, "./prebuilt/uoj_run", "",
+				"", 10, "./prebuilt/uoj_run", "",
 				fmt.Sprintf("--tl=%d", (5*1000)),
 				fmt.Sprintf("--rtl=%d", (10*1000)),
 				fmt.Sprintf("--ml=%d", (512*1024)),

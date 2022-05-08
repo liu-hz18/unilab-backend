@@ -39,7 +39,7 @@ func CreateAnnouncementHandler(c *gin.Context) {
 	}
 	// save file to disk
 	base_path := setting.CourseRootDir + strconv.FormatUint(uint64(postform.CourseID), 10) + "_" + course_name + "/announcements/"
-	err = os.MkdirAll(base_path, 777)
+	err = os.MkdirAll(base_path, 0777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return

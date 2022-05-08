@@ -65,7 +65,7 @@ func SubmitCodeHandler(c *gin.Context) {
 	}
 	// save upload code to disk
 	submit_base_path := setting.UserRootDir + "/" + strconv.FormatUint(uint64(userid), 10) + "/" + strconv.FormatUint(uint64(postform.QuestionID), 10) + "_" + questionName + "/" + strconv.FormatUint(uint64(count+1), 10) + "_test/"
-	err = os.MkdirAll(submit_base_path, 777)
+	err = os.MkdirAll(submit_base_path, 0777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
@@ -83,17 +83,20 @@ func SubmitCodeHandler(c *gin.Context) {
 	}
 	// insert into test database
 	testID, err := database.CreateSubmitRecord(postform, userid, submit_base_path, testCaseNum)
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
 	data := make(map[string]interface{})
 	data["result"] = testID
 	code := SUCCESS
+	// run test
+	database.RunTest(testID)
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
 		"msg":  MsgFlags[code],
 		"data": data,
 	})
-	// run test
-	logging.Info("begin launtch test: ", testID)
-	database.RunTest(testID)
 }
 
 // fetch all submit test ids
@@ -109,6 +112,10 @@ func FetchAllSubmitsStatus(c *gin.Context) {
 		return
 	}
 	results, err := database.GetUserSubmitTests(courseID, userID)
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
 	data := make(map[string]interface{})
 	data["result"] = results
 	c.JSON(http.StatusOK, gin.H{

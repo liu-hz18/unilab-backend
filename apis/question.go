@@ -74,7 +74,7 @@ func CreateQuestionHandler(c *gin.Context) {
 	}
 	// save file to disk
 	question_base_path := setting.QuestionRootDir + strconv.FormatUint(uint64(question_id), 10) + "_" + postform.Title + "/"
-	err = os.MkdirAll(question_base_path, 777)
+	err = os.MkdirAll(question_base_path, 0777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return

@@ -33,8 +33,10 @@ func testJudger() {
 		MemoryLimit: 512 * 1024, // KB
 		TestCaseNum: 3,
 		Language:    "go",
+		QuestionDir: "../../testcase",
+		ProgramDir:  "../../program",
 	}
-	result := judger.LaunchTest(config, "../../testcase", "../../program")
+	result := judger.LaunchTest(config)
 	logging.Info(result)
 }
 
@@ -133,6 +135,9 @@ func main() {
 		WriteTimeout:   setting.WriteTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
+
+	defer database.Release()
+
 	// gracefully shutdown
 	// Initializing the server in a goroutine so that it won't block the graceful shutdown handling below
 	go func() {

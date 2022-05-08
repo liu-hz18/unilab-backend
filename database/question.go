@@ -1,6 +1,8 @@
 package database
 
 import (
+	"database/sql"
+	"errors"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -148,6 +150,14 @@ func GetQuestionsByCourseID(courseID uint32, userID uint32) ([]Question, error) 
 		err = db.QueryRow("SELECT score FROM oj_test_run WHERE course_id=? AND question_id=? AND user_id=? ORDER BY score DESC;", courseID, question.ID, userID).Scan(
 			&question.UserMaxScore,
 		)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				question.UserMaxScore = 0
+			} else {
+				logging.Info(err)
+				return nil, err
+			}
+		}
 		username, err := GetUserName(strconv.FormatUint(uint64(userid), 10))
 		if err != nil {
 			logging.Info(err)

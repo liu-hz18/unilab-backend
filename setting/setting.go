@@ -17,9 +17,9 @@ var (
 	UserRootDir       string
 	QuestionRootDir   string
 	RuntimeRootDir    string
-
-	FrontEndBaseUrl string
-	BackEndBaseURL  string
+	JudgerPoolSize    int
+	FrontEndBaseUrl   string
+	BackEndBaseURL    string
 
 	// auth
 	GitLabBaseURL  string
@@ -65,6 +65,7 @@ func init() {
 	UserRootDir = UploadFileRootDir + sec.Key("USER_SUB_DIR").MustString("user/")
 	QuestionRootDir = UploadFileRootDir + sec.Key("QUESTION_SUB_DIR").MustString("question/")
 	RuntimeRootDir = sec.Key("RUNTIME_ROOT_DIR").MustString("runtime/")
+	JudgerPoolSize = sec.Key("JUDGER_POOL_SIZE").MustInt(2048)
 	FrontEndBaseUrl = sec.Key("FRONTEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn")
 	BackEndBaseURL = sec.Key("BACKEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn/api")
 

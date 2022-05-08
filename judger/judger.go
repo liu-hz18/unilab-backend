@@ -26,6 +26,8 @@ type TestConfig struct {
 	TestCaseNum uint32
 	Language    string
 	TotalScore  uint32
+	QuestionDir string
+	ProgramDir  string
 	// TestCaseScore []uint32
 }
 
@@ -238,7 +240,7 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 	return res
 }
 
-func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResult {
+func LaunchTest(cfg TestConfig) TestResult {
 	var result TestResult
 	result.QuestionID = cfg.QuestionID
 	result.TestID = cfg.TestID
@@ -247,6 +249,8 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	result.CompileResult = ""
 	result.ExtraResult = ""
 	result.RunResults = []TestCaseResult{}
+	testCaseDir := cfg.QuestionDir
+	programDir := cfg.ProgramDir
 	// check config
 	check_cfg_msg := check_cfg(cfg)
 	if check_cfg_msg != "" {

@@ -112,10 +112,13 @@ func RunTest(testID uint32) {
 		TestCaseNum: testcaseNum,
 		Language:    language,
 		TotalScore:  totalScore,
+		QuestionDir: questionDir,
+		ProgramDir:  programDir,
 	}
-	result := judger.LaunchTest(config, questionDir, programDir)
-	logging.Info("run result: ", result)
-	UpdateTestCaseRunResults(result)
+	// use goroutine pool
+	LaunchTestAsync(config)
+	// use blocked method
+	// LaunchTestSync(config)
 }
 
 func GetQuestionSubmitCounts(questionID, userID uint32) (uint32, error) {
@@ -365,7 +368,6 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
 	}
 	_ = tx.Commit()
 	logging.Info("UpdateTestCaseRunResults() commit trans action successfully.")
-	return
 }
 
 func GetSubmitDetail(testID uint32) SubmitDetail {

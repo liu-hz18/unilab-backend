@@ -281,12 +281,3 @@ func PreinitDBTestData() {
 	}
 	logging.Info("pre test data already attached.")
 }
-
-func clearTable(tableName string) {
-	if setting.ClearOnStart {
-		_, err := db.Exec("DROP TABLE IF EXISTS " + tableName + ";")
-		if err != nil {
-			logging.Fatal(err)
-		}
-	}
-}

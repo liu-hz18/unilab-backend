@@ -141,6 +141,10 @@ func GetAssignemntInfo(CourseID uint32, UserID uint32) ([]Assignment, error) {
 				&question.TotalScore,
 				&question.TestCaseNum,
 			)
+			if err != nil {
+				logging.Info(err)
+				return nil, err
+			}
 			info[index].Questions = append(info[index].Questions, question)
 		}
 	}

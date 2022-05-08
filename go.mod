@@ -10,6 +10,7 @@ require (
 	github.com/gojuukaze/YTask/v2 v2.5.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
+	github.com/panjf2000/ants/v2 v2.5.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
 )

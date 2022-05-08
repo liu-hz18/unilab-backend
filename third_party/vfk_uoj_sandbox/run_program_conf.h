@@ -917,39 +917,55 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 			flags = reg.REG_ARG2;
 		}
 		string fn = read_abspath_from_regs(fn_addr, pid);
-		if (need_show_trace_details) {
-			fprintf(stderr, "open  ");
-
-			switch (flags & O_ACCMODE) {
-			case O_RDONLY:
-				fprintf(stderr, "r ");
-				break;
-			case O_WRONLY:
-				fprintf(stderr, "w ");
-				break;
-			case O_RDWR:
-				fprintf(stderr, "rw");
-				break;
-			default:
-				fprintf(stderr, "??");
-				break;
-			}
-			fprintf(stderr, " %s\n", fn.c_str());
-			// for(set<string>::iterator i=readable_file_name_set.begin();i!=readable_file_name_set.end();i++)
-        	// 	fprintf(stderr, " %s\n", (*i).c_str()); //注意指针运算符
-		}
-
 		bool is_read_only = (flags & O_ACCMODE) == O_RDONLY &&
 			(flags & O_CREAT) == 0 &&
 			(flags & O_EXCL) == 0 &&
 			(flags & O_TRUNC) == 0;
 		if (is_read_only) {
 			if (realpath(fn) != "" && !is_readable_file(fn)) {
-				return on_dgs_file_detect(pid, reg, fn);
+				bool ok = on_dgs_file_detect(pid, reg, fn);
+				if (!ok && need_show_trace_details) {
+					fprintf(stderr, "open  ");
+					switch (flags & O_ACCMODE) {
+					case O_RDONLY:
+						fprintf(stderr, "r ");
+						break;
+					case O_WRONLY:
+						fprintf(stderr, "w ");
+						break;
+					case O_RDWR:
+						fprintf(stderr, "rw");
+						break;
+					default:
+						fprintf(stderr, "??");
+						break;
+					}
+					fprintf(stderr, " %s\n", fn.c_str());
+				}
+				return ok;
 			}
 		} else {
 			if (!is_writable_file(fn)) {
-				return on_dgs_file_detect(pid, reg, fn);
+				bool ok = on_dgs_file_detect(pid, reg, fn);
+				if (!ok && need_show_trace_details) {
+					fprintf(stderr, "open  ");
+					switch (flags & O_ACCMODE) {
+					case O_RDONLY:
+						fprintf(stderr, "r ");
+						break;
+					case O_WRONLY:
+						fprintf(stderr, "w ");
+						break;
+					case O_RDWR:
+						fprintf(stderr, "rw");
+						break;
+					default:
+						fprintf(stderr, "??");
+						break;
+					}
+					fprintf(stderr, " %s\n", fn.c_str());
+				}
+				return ok;
 			}
 		}
 	} else if (syscall == __NR_readlink || syscall == __NR_readlinkat) {
@@ -960,11 +976,15 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 			fn_addr = reg.REG_ARG1;
 		}
 		string fn = read_abspath_from_regs(fn_addr, pid);
-		if (need_show_trace_details) {
+		/* if (need_show_trace_details) {
 			fprintf(stderr, "readlink %s\n", fn.c_str());
-		}
+		} */
 		if (!is_readable_file(fn)) {
-			return on_dgs_file_detect(pid, reg, fn);
+			bool ok = on_dgs_file_detect(pid, reg, fn);
+			if (!ok && need_show_trace_details) {
+				fprintf(stderr, "readlink %s\n", fn.c_str());
+			}
+			return ok;
 		}
 	} else if (syscall == __NR_unlink || syscall == __NR_unlinkat) {
 		reg_val_t fn_addr;
@@ -974,29 +994,41 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 			fn_addr = reg.REG_ARG1;
 		}
 		string fn = read_abspath_from_regs(fn_addr, pid);
-		if (need_show_trace_details) {
-			fprintf(stderr, "unlink   %s\n", fn.c_str());
-		}
+		// if (need_show_trace_details) {
+		// 	fprintf(stderr, "unlink   %s\n", fn.c_str());
+		// }
 		if (!is_writable_file(fn)) {
-			return on_dgs_file_detect(pid, reg, fn);
+			bool ok = on_dgs_file_detect(pid, reg, fn);
+			if (!ok && need_show_trace_details) {
+				fprintf(stderr, "unlink   %s\n", fn.c_str());
+			}
+			return ok;
 		}
 	} else if (syscall == __NR_access) {
 		reg_val_t fn_addr = reg.REG_ARG0;
 		string fn = read_abspath_from_regs(fn_addr, pid);
-		if (need_show_trace_details) {
-			fprintf(stderr, "access   %s\n", fn.c_str());
-		}
+		// if (need_show_trace_details) {
+		// 	fprintf(stderr, "access   %s\n", fn.c_str());
+		// }
 		if (!is_statable_file(fn)) {
-			return on_dgs_file_detect(pid, reg, fn);
+			bool ok = on_dgs_file_detect(pid, reg, fn);
+			if (!ok && need_show_trace_details) {
+				fprintf(stderr, "access   %s\n", fn.c_str());
+			}
+			return ok;
 		}
 	} else if (syscall == __NR_stat || syscall == __NR_lstat) {
 		reg_val_t fn_addr = reg.REG_ARG0;
 		string fn = read_abspath_from_regs(fn_addr, pid);
-		if (need_show_trace_details) {
-			fprintf(stderr, "stat     %s\n", fn.c_str());
-		}
+		// if (need_show_trace_details) {
+		// 	fprintf(stderr, "stat     %s\n", fn.c_str());
+		// }
 		if (!is_statable_file(fn)) {
-			return on_dgs_file_detect(pid, reg, fn);
+			bool ok = on_dgs_file_detect(pid, reg, fn);
+			if (!ok && need_show_trace_details) {
+				fprintf(stderr, "stat     %s\n", fn.c_str());
+			}
+			return ok;
 		}
 	} else if (syscall == __NR_newfstatat) {
 		reg_val_t fn_addr = reg.REG_ARG1;
@@ -1010,20 +1042,28 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 	} else if (syscall == __NR_execve) {
 		reg_val_t fn_addr = reg.REG_ARG0;
 		string fn = read_abspath_from_regs(fn_addr, pid);
-		if (need_show_trace_details) {
-			fprintf(stderr, "execve   %s\n", fn.c_str());
-		}
+		// if (need_show_trace_details) {
+		// 	fprintf(stderr, "execve   %s\n", fn.c_str());
+		// }
 		if (!is_readable_file(fn)) {
-			return on_dgs_file_detect(pid, reg, fn);
+			bool ok = on_dgs_file_detect(pid, reg, fn);
+			if (!ok && need_show_trace_details) {
+				fprintf(stderr, "execve   %s\n", fn.c_str());
+			}
+			return ok;
 		}
 	} else if (syscall == __NR_chmod || syscall == __NR_rename) {
 		reg_val_t fn_addr = reg.REG_ARG0;
 		string fn = read_abspath_from_regs(fn_addr, pid);
-		if (need_show_trace_details) {
-			fprintf(stderr, "change   %s\n", fn.c_str());
-		}
+		// if (need_show_trace_details) {
+		// 	fprintf(stderr, "change   %s\n", fn.c_str());
+		// }
 		if (!is_writable_file(fn)) {
-			return on_dgs_file_detect(pid, reg, fn);
+			bool ok = on_dgs_file_detect(pid, reg, fn);
+			if (!ok && need_show_trace_details) {
+				fprintf(stderr, "change   %s\n", fn.c_str());
+			}
+			return ok;
 		}
 	}
 	return true;

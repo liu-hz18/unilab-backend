@@ -39,6 +39,7 @@ func OsWebhookHandler(c *gin.Context) {
 		apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
 		return
 	}
+	logging.Info(webhookInfo)
 	project_id := strconv.Itoa(int(webhookInfo.Project_info.Project_id))
 	job_id := strconv.Itoa(int(webhookInfo.JobInfos[0].Job_id))
 	accessToken, err := database.GetUserAccessToken("2018011302")

@@ -1,8 +1,8 @@
 package database
 
 import (
-	"unilab-backend/logging"
 	"time"
+	"unilab-backend/logging"
 )
 
 type GradeRecord struct {
@@ -30,20 +30,21 @@ type Output struct {
 	// Expand bool
 }
 
-func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs []Output, test_status string)(error){
-	tx,err := db.Begin()
-	if err != nil{
-		if tx !=nil {
+func CreateGradeRecord(userid uint32, branch_name string, tests []Test, outputs []Output, test_status string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		if tx != nil {
 			_ = tx.Rollback()
 		}
 		logging.Info("CreateOsRecord() begin trans action failed: %v", err)
 	}
-	result,err := tx.Exec(`INSERT INTO os_grade
-		(grade_time)
+	result, err := tx.Exec(`INSERT INTO os_grade
+		(user_id,branch_name,grade_time)
 		VALUES
-		(?);
+		(?,?,?);
 	`,
-		// userid,
+		userid,
+		branch_name,
 		time.Now(),
 	)
 	if err != nil {
@@ -96,7 +97,7 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 			return err
 		}
 	}
-	_,err = tx.Exec(`INSERT IGNORE os_grade_result
+	_, err = tx.Exec(`INSERT IGNORE os_grade_result
 		(grade_id,user_id,branch_name,pass_time,total_time)
 		VALUES
 		(?,?,?,?,?);
@@ -107,17 +108,17 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 		0,
 		0,
 	)
-	if err != nil{
+	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)
 		return err
 	}
-	if test_status=="passed"{
-		_,err = tx.Exec(`UPDATE os_grade_result SET pass_time=pass_time+1,total_time=total_time+1,grade_id=? WHERE user_id=? AND branch_name=?`, gradeID, userid, branch_name)
-	}else{
-		_,err = tx.Exec(`UPDATE os_grade_result SET total_time=total_time+1 WHERE user_id=? AND branch_name=?`, userid, branch_name)
+	if test_status == "passed" {
+		_, err = tx.Exec(`UPDATE os_grade_result SET pass_time=pass_time+1,total_time=total_time+1,grade_id=? WHERE user_id=? AND branch_name=?`, gradeID, userid, branch_name)
+	} else {
+		_, err = tx.Exec(`UPDATE os_grade_result SET total_time=total_time+1 WHERE user_id=? AND branch_name=?`, userid, branch_name)
 	}
-	if err != nil{
+	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)
 		return err
@@ -127,17 +128,17 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test,outputs [
 	return nil
 }
 
-func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error){
+func GetGradeDetailByBranch(userID uint32, branch_name string) (GradeRecord, error) {
 	var user_git_tsinghua_id string
 	gradeRecord := GradeRecord{}
 	tests := []Test{}
 	outputs := []Output{}
-	err := db.QueryRow("SELECT user_git_tsinghua_id FROM oj_user WHERE user_id=?;",userID).Scan(&user_git_tsinghua_id)
-	if err != nil{
+	err := db.QueryRow("SELECT user_git_tsinghua_id FROM oj_user WHERE user_id=?;", userID).Scan(&user_git_tsinghua_id)
+	if err != nil {
 		logging.Info(err)
-		return gradeRecord,err
+		return gradeRecord, err
 	}
-	err = db.QueryRow("SELECT grade_id,branch_name FROM os_grade_result WHERE user_id=? AND branch_name=?;",user_git_tsinghua_id,branch_name).Scan(
+	err = db.QueryRow("SELECT grade_id,branch_name FROM os_grade_result WHERE user_id=? AND branch_name=?;", user_git_tsinghua_id, branch_name).Scan(
 		&gradeRecord.Id,
 		&gradeRecord.Test_name,
 	)
@@ -183,14 +184,14 @@ func GetGradeDetailByBranch(userID uint32,branch_name string) (GradeRecord,error
 func GetGradeDetailsById(userID uint32) ([]GradeRecord, error) {
 	var gradeDetails = []GradeRecord{}
 	var user_git_tsinghua_id string
-	err := db.QueryRow("SELECT user_git_tsinghua_id FROM oj_user WHERE user_id=?;",userID).Scan(&user_git_tsinghua_id)
-	if err != nil{
+	err := db.QueryRow("SELECT user_git_tsinghua_id FROM oj_user WHERE user_id=?;", userID).Scan(&user_git_tsinghua_id)
+	if err != nil {
 		logging.Info(err)
-		return gradeDetails,err
+		return gradeDetails, err
 	}
 	// chs := [...]string{"ch7"}
-	rows,err := db.Query("SELECT branch_name FROM os_grade_result WHERE user_id=?;",user_git_tsinghua_id)
-	if err != nil{
+	rows, err := db.Query("SELECT branch_name FROM os_grade_result WHERE user_id=?;", user_git_tsinghua_id)
+	if err != nil {
 		logging.Info(err)
 		return gradeDetails, err
 	}

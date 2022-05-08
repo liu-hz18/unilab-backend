@@ -1,8 +1,15 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"unilab-backend/OsServer"
 	"unilab-backend/apis"
@@ -11,11 +18,10 @@ import (
 	"unilab-backend/judger"
 	"unilab-backend/logging"
 	"unilab-backend/middleware"
-	"unilab-backend/os"
+	"unilab-backend/osgrade"
+	"unilab-backend/setting"
 	"unilab-backend/taskqueue"
 	"unilab-backend/webhook"
-
-	"unilab-backend/setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,10 +43,25 @@ func testOs() {
 }
 
 func initRouter() *gin.Engine {
+	gin.DefaultWriter = io.MultiWriter(logging.GetWriter(setting.RuntimeRootDir+"logs/access.log"), os.Stdout)
+	gin.DefaultErrorWriter = io.MultiWriter(logging.GetWriter(setting.RuntimeRootDir+"logs/access_error.log"), os.Stderr)
 	router := gin.New()
 	// Set a lower memory limit for multipart forms (default is 32 MiB)
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB
-	router.Use(gin.Logger())
+	// custom logger
+	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+			param.ClientIP,
+			param.TimeStamp.Format(time.RFC1123),
+			param.Method,
+			param.Path,
+			param.Request.Proto,
+			param.StatusCode,
+			param.Latency,
+			param.Request.UserAgent(),
+			param.ErrorMessage,
+		)
+	}))
 	router.Use(gin.Recovery())
 
 	// cross-origin routes
@@ -54,7 +75,7 @@ func initRouter() *gin.Engine {
 	router.GET("/login", auth.UserLoginHandler)
 	router.GET("/callback", auth.GitLabCallBackHandler)
 
-	router.GET("/Os/FetchGrade", os.FetchOsGrade)
+	router.GET("/Os/FetchGrade", osgrade.FetchOsGrade)
 	router.POST("/webhook/os", webhook.OsWebhookHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
@@ -71,8 +92,8 @@ func initRouter() *gin.Engine {
 		studentApis.GET("/fetch-all-testids", apis.FetchAllSubmitsStatus)
 		studentApis.POST("/update-tests", apis.UpdateTestDetails)
 		studentApis.GET("/fetch-submit-detail", apis.GetSubmitDetail)
-		studentApis.POST("/Os/Grade", os.GetOsGradeHandler)
-		studentApis.GET("/Os/BranchGrade", os.GetOsBranchGradeHandler)
+		studentApis.POST("/Os/Grade", osgrade.GetOsGradeHandler)
+		studentApis.GET("/Os/BranchGrade", osgrade.GetOsBranchGradeHandler)
 		studentApis.POST("/submit-task", taskqueue.TaskSubmitHandler)
 	}
 	teacherApis := router.Group("/teacher")
@@ -112,9 +133,31 @@ func main() {
 		WriteTimeout:   setting.WriteTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
-	logging.Info("start http server listening ", endPoint)
-	server.ListenAndServe()
-
+	// gracefully shutdown
+	// Initializing the server in a goroutine so that it won't block the graceful shutdown handling below
+	go func() {
+		if err := server.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
+			logging.Info("listen: ", err)
+		} else {
+			logging.Info("server listening: ", endPoint)
+		}
+	}()
+	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 5 seconds.
+	quit := make(chan os.Signal, 1)
+	// kill (no param) default send syscall.SIGTERM
+	// kill -2 is syscall.SIGINT
+	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logging.Info("Shutting down server...")
+	// The context is used to inform the server it has 5 seconds to finish
+	// the request it is currently handling
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		logging.Fatal("Server forced to shutdown:", err)
+	}
+	logging.Info("Server exiting...")
 	// testOs()
 	// testJudger()
 }

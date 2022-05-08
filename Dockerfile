@@ -19,7 +19,7 @@ ADD . /unilab-backend
 
 # 因为已经是在 /app下了，所以使用  ./
 RUN mkdir -p ./prebuilt
-RUN go build -v -o main .
+RUN go build -ldflags="-s -w" -v -o main .
 RUN g++ ./third_party/vfk_uoj_sandbox/run_program.cpp -o ./prebuilt/uoj_run -O2 -Wall
 RUN g++ ./third_party/testlib/fcmp.cpp -o ./prebuilt/fcmp -O2 -Wall
 RUN DEBIAN_FRONTEND=noninteractive apt-get remove -y git tzdata build-essential

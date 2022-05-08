@@ -7,7 +7,7 @@ import (
 	"unilab-backend/database"
 	"unilab-backend/gitlab_api"
 	"unilab-backend/logging"
-	"unilab-backend/os"
+	"unilab-backend/osgrade"
 
 	"github.com/gin-gonic/gin"
 )
@@ -40,6 +40,11 @@ func OsWebhookHandler(c *gin.Context) {
 		return
 	}
 	logging.Info(webhookInfo)
+	if len(webhookInfo.JobInfos) < 1 {
+		logging.Info("array webhookInfo.JobInfos is empty!")
+		apis.ErrorResponse(c, apis.INVALID_PARAMS, "array webhookInfo.JobInfos is empty!")
+		return
+	}
 	project_id := strconv.Itoa(int(webhookInfo.Project_info.Project_id))
 	job_id := strconv.Itoa(int(webhookInfo.JobInfos[0].Job_id))
 	accessToken, err := database.GetUserAccessToken("2018011302")
@@ -50,7 +55,7 @@ func OsWebhookHandler(c *gin.Context) {
 	if webhookInfo.Attributes.Detail_status == "passed" || webhookInfo.Attributes.Detail_status == "failed" {
 		// fmt.Println(trace)
 		trace := gitlab_api.Get_job_trace(project_id, job_id, "2018011302", accessToken)
-		tests, outputs := os.Grade(trace)
+		tests, outputs := osgrade.Grade(trace)
 		database.CreateGradeRecord(webhookInfo.UserInfo.UserID, webhookInfo.Attributes.Branch, tests, outputs, webhookInfo.Attributes.Detail_status)
 	}
 	// tests,outputs := os.Grade(trace)

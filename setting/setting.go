@@ -1,7 +1,6 @@
 package setting
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -52,12 +51,12 @@ func init() {
 	var err error
 	Cfg, err = ini.Load("./conf.ini")
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Fail to parse 'conf.ini': ", err))
+		log.Fatalf("Fail to parse 'conf.ini': %v", err)
 	}
 
 	sec, err := Cfg.GetSection("app")
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Fail to get section 'app' in 'conf.ini': ", err))
+		log.Fatalf("Fail to get section 'app' in 'conf.ini': %v", err)
 	}
 	JwtSecret = sec.Key("JWT_SECRET").MustString("!@)*#)!@U#@*!@!)")
 	RunMode = sec.Key("RUN_MODE").MustString("debug") // default is debug
@@ -71,7 +70,7 @@ func init() {
 
 	sec, err = Cfg.GetSection("auth")
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Fail to get section 'auth' in 'conf.ini': ", err))
+		log.Fatalf("Fail to get section 'auth' in 'conf.ini': %v", err)
 	}
 	GitLabBaseURL = sec.Key("GITLAB_BASE_URL").MustString("https://git.tsinghua.edu.cn/api/v4")
 	GitLabAuthURL = sec.Key("AUTH_URL").MustString("https://git.tsinghua.edu.cn/oauth/authorize")
@@ -81,7 +80,7 @@ func init() {
 
 	sec, err = Cfg.GetSection("server")
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Fail to get section 'server' in 'conf.ini': ", err))
+		log.Fatalf("Fail to get section 'server' in 'conf.ini': %v", err)
 	}
 	HttpPort = sec.Key("HTTP_PORT").MustInt(1323)
 	ReadTimeout = time.Duration(sec.Key("READ_TIMEOUT").MustInt(60)) * time.Second
@@ -89,7 +88,7 @@ func init() {
 
 	sec, err = Cfg.GetSection("database")
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Fail to get section 'database' in 'conf.ini': ", err))
+		log.Fatalf("Fail to get section 'database' in 'conf.ini': %v", err)
 	}
 	DBType = sec.Key("TYPE").String()
 	DBName = sec.Key("NAME").String()
@@ -100,7 +99,7 @@ func init() {
 
 	sec, err = Cfg.GetSection("redis")
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Fail to get section 'redis' in 'conf.ini': ", err))
+		log.Fatalf("Fail to get section 'redis' in 'conf.ini': %v", err)
 	}
 	RedisHost = sec.Key("HOST").String()
 	RedisPort = sec.Key("PORT").MustString("6379")

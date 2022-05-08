@@ -32,6 +32,7 @@ type JobInfo struct {
 }
 
 func OsWebhookHandler(c *gin.Context) {
+	logging.Info("Start Webhook")
 	var webhookInfo WebhookInfo
 	if err := c.ShouldBindJSON(&webhookInfo); err != nil {
 		logging.Info(err)

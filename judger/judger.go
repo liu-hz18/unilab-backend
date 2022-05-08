@@ -153,7 +153,7 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 	var res Response
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout+5)*time.Second)
 	defer cancel()
-	cmdarray := []string{}
+	var cmdarray []string
 	if rlimit != "" {
 		cmdarray = append([]string{fmt.Sprintf("%s && %s", rlimit, executable)}, args...)
 	} else {
@@ -282,6 +282,10 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 	}
 	// compile
 	files, err := ioutil.ReadDir(tempDirName)
+	if err != nil {
+		result.ExtraResult = err.Error()
+		return result
+	}
 	// var haveMakeFile bool = false
 	for _, file := range files {
 		logging.Info(file.Name())
@@ -306,7 +310,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 		return result
 	}
 	// compile
-	response := Subprocess(compileRlimits, 30, compileCmd, tempDirName)
+	response := Subprocess(compileRlimits, 10, compileCmd, tempDirName)
 	logging.Info(response)
 	if response.ExitCode != 0 {
 		logging.Info("Compile Error: ", response.StdErr)
@@ -382,7 +386,7 @@ func LaunchTest(cfg TestConfig, testCaseDir string, programDir string) TestResul
 				fmt.Sprintf("--ml=%d", (512*1024)),
 				fmt.Sprintf("--ol=%d", (64*1024)),
 				fmt.Sprintf("--sl=%d", (64*1024)),
-				fmt.Sprintf("--work-path=."),
+				"--work-path=.",
 				fmt.Sprintf("--res=%s", path.Join(tempDirName, "spj_run_res.txt")),
 				fmt.Sprintf("--err=%s", "/dev/stdout"),
 				// "--show-trace-details", // ONLY FOR DEBUG

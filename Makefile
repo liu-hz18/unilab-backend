@@ -19,7 +19,7 @@ check:
 	gofmt -w .
 
 lint:
-	golint ./...
+	~/go/bin/golint ./...
 
 clean:
 	go clean -i .

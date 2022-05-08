@@ -39,12 +39,13 @@ func CreateGradeRecord(userid uint32, branch_name string, tests []Test, outputs 
 		logging.Info("CreateOsRecord() begin trans action failed: %v", err)
 	}
 	result, err := tx.Exec(`INSERT INTO os_grade
-		(user_id,branch_name,grade_time)
+		(user_id,branch_name,test_status,grade_time)
 		VALUES
-		(?,?,?);
+		(?,?,?,?);
 	`,
 		userid,
 		branch_name,
+		test_status,
 		time.Now(),
 	)
 	if err != nil {

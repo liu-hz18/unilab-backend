@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 
 	"strconv"
 	"strings"
@@ -224,20 +225,39 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 			linecounter += 1
 		}
 	}
+	_stdout := strings.Trim(outContent, " \n")
+	_stderr := strings.Trim(errContent, " \n")
 	err = cmd.Wait()
 	if err != nil {
-		logging.Info(err, string(outContent), string(errContent))
-		res.StdErr = string(errContent)
-		res.StdOut = string(outContent)
+		logging.Info("server: ", err)
+		res.StdOut = _stdout
+		res.StdErr = _stderr
 		res.ServerErr = err.Error()
 		res.ExitCode = getErrorExitCode(err)
 		return res
 	}
-	res.StdOut = string(outContent)
-	res.StdErr = string(errContent)
+	res.StdOut = _stdout
+	res.StdErr = _stderr
 	res.ServerErr = ""
 	res.ExitCode = cmd.ProcessState.Sys().(syscall.WaitStatus).ExitStatus()
 	return res
+}
+
+func trimJSCompileOutputs(results string) string {
+	if results == "" {
+		return ""
+	}
+	lines := strings.Split(results, "\n")
+	index := 0
+	startline := ""
+	for idx, line := range lines {
+		if len(line) > 4 && line[0:4] == "/tmp" {
+			index = idx + 1
+			arr := strings.Split(line, "/")
+			startline = arr[len(arr)-1] + "\n"
+		}
+	}
+	return startline + strings.Join(lines[index:], "\n")
 }
 
 func LaunchTest(cfg TestConfig) TestResult {
@@ -249,7 +269,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 	result.CompileResult = ""
 	result.ExtraResult = ""
 	result.RunResults = []TestCaseResult{}
-	testCaseDir := cfg.QuestionDir
+	testCaseDir, _ := filepath.Abs(cfg.QuestionDir)
 	programDir := cfg.ProgramDir
 	// check config
 	check_cfg_msg := check_cfg(cfg)
@@ -272,12 +292,12 @@ func LaunchTest(cfg TestConfig) TestResult {
 		return result
 	}
 	defer os.RemoveAll(tempDirName)
-	// copy source code and test case into temp directory
-	err = copyToDstDir(tempDirName, testCaseDir)
-	if err != nil {
-		result.ExtraResult = err.Error()
-		return result
-	}
+	// copy source code into temp directory
+	// err = copyToDstDir(tempDirName, testCaseDir)
+	// if err != nil {
+	// 	result.ExtraResult = err.Error()
+	// 	return result
+	// }
 	err = copyToDstDir(tempDirName, programDir)
 	if err != nil {
 		result.ExtraResult = err.Error()
@@ -316,11 +336,15 @@ func LaunchTest(cfg TestConfig) TestResult {
 	response := Subprocess(compileRlimits, 10, compileCmd, tempDirName)
 	logging.Info(response)
 	if response.ExitCode != 0 {
-		logging.Info("Compile Error: ", response.StdErr)
 		if response.StdErr != "" {
 			result.CompileResult = response.StdErr
+		} else if response.StdOut != "" {
+			result.CompileResult = response.StdOut
 		} else {
 			result.CompileResult = response.ServerErr
+		}
+		if cfg.Language == "js" {
+			result.CompileResult = trimJSCompileOutputs(result.CompileResult)
 		}
 		return result
 	}
@@ -338,7 +362,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 			fmt.Sprintf("--res=%s", path.Join(tempDirName, "run_res.txt")),
 			fmt.Sprintf("--err=%s", "/dev/stdout"),
 			fmt.Sprintf("--type=%s", runType),
-			fmt.Sprintf("--in=%s", path.Join(tempDirName, fmt.Sprintf("%d.in", i))),
+			fmt.Sprintf("--in=%s", path.Join(testCaseDir, fmt.Sprintf("%d.in", i))),
 			fmt.Sprintf("--out=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
 			fmt.Sprintf("--err=%s", path.Join(tempDirName, fmt.Sprintf("%d.err", i))),
 			"--show-trace-details", // ONLY FOR DEBUG
@@ -393,13 +417,13 @@ func LaunchTest(cfg TestConfig) TestResult {
 				fmt.Sprintf("--res=%s", path.Join(tempDirName, "spj_run_res.txt")),
 				fmt.Sprintf("--err=%s", "/dev/stdout"),
 				// "--show-trace-details", // ONLY FOR DEBUG
-				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.in", i))),
+				fmt.Sprintf("--add-readable=%s", path.Join(testCaseDir, fmt.Sprintf("%d.in", i))),
 				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
-				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.ans", i))),
+				fmt.Sprintf("--add-readable=%s", path.Join(testCaseDir, fmt.Sprintf("%d.ans", i))),
 				"./prebuilt/fcmp",
-				path.Join(tempDirName, fmt.Sprintf("%d.in", i)),
+				path.Join(testCaseDir, fmt.Sprintf("%d.in", i)),
 				path.Join(tempDirName, fmt.Sprintf("%d.out", i)),
-				path.Join(tempDirName, fmt.Sprintf("%d.ans", i)),
+				path.Join(testCaseDir, fmt.Sprintf("%d.ans", i)),
 			)
 			if response.ExitCode != 0 || len(response.StdOut) < 2 {
 				test_case_result.CheckerStatus = 7

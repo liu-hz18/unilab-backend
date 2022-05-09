@@ -100,8 +100,20 @@ func SubmitCodeHandler(c *gin.Context) {
 }
 
 // fetch all submit test ids
-func FetchAllSubmitsStatus(c *gin.Context) {
+func FetchAllSubmitsIDs(c *gin.Context) {
 	courseID, err := utils.StringToUint32(c.Query("courseid"))
+	if err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	// get offset
+	offset, err := utils.StringToUint32(c.Query("offset"))
+	if err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	// get limit
+	limit, err := utils.StringToUint32(c.Query("limit"))
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
@@ -111,17 +123,25 @@ func FetchAllSubmitsStatus(c *gin.Context) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return
 	}
-	results, err := database.GetUserSubmitTests(courseID, userID)
+	totalNum, err := database.GetUserSubmitsTestCount(courseID, userID)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
 	}
-	data := make(map[string]interface{})
-	data["result"] = results
+	results, err := database.GetUserSubmitTestIDs(courseID, userID, limit, offset)
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": SUCCESS,
 		"msg":  MsgFlags[SUCCESS],
-		"data": data,
+		"data": map[string]interface{}{
+			"result": map[string]interface{}{
+				"testids":  results,
+				"totalNum": totalNum,
+			},
+		},
 	})
 }
 

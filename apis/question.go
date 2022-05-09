@@ -122,31 +122,46 @@ func CreateQuestionHandler(c *gin.Context) {
 }
 
 func FetchCourseQuestionsHandler(c *gin.Context) {
-	courseid_str := c.Query("courseid")
-	if courseid_str == "" {
-		ErrorResponse(c, ERROR, "there's not Course ID in query params.")
-		return
-	}
-	courseID, err := strconv.ParseUint(courseid_str, 10, 32)
+	courseID, err := utils.StringToUint32(c.Query("courseid"))
 	if err != nil {
-		ErrorResponse(c, ERROR, err.Error())
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	if !database.CheckCourseAccessPermission(uint32(courseID), c.MustGet("user_id").(uint32)) {
+	// get offset
+	offset, err := utils.StringToUint32(c.Query("offset"))
+	if err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	// get limit
+	limit, err := utils.StringToUint32(c.Query("limit"))
+	if err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	if !database.CheckCourseAccessPermission(courseID, c.MustGet("user_id").(uint32)) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return
 	}
-	questions, err := database.GetQuestionsByCourseID(uint32(courseID), c.MustGet("user_id").(uint32))
+	totalNum, err := database.GetQuestionTotalNumByCourseID(courseID)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
 	}
-	data := make(map[string]interface{})
-	data["result"] = questions
+	questions, err := database.GetQuestionsByCourseID(courseID, c.MustGet("user_id").(uint32), limit, offset)
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": SUCCESS,
 		"msg":  MsgFlags[SUCCESS],
-		"data": data,
+		"data": map[string]interface{}{
+			"result": map[string]interface{}{
+				"questions": questions,
+				"totalNum":  totalNum,
+			},
+		},
 	})
 }
 

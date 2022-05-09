@@ -139,8 +139,8 @@ func GetQuestionSubmitCounts(questionID, userID uint32) (uint32, error) {
 	return total, nil
 }
 
-func GetUserSubmitTests(courseID, userID uint32) ([]uint32, error) {
-	rows, err := db.Query("SELECT test_id FROM oj_test_run WHERE user_id=? AND course_id=? ORDER BY test_launch_time desc;", userID, courseID)
+func GetUserSubmitTestIDs(courseID, userID, limit, offset uint32) ([]uint32, error) {
+	rows, err := db.Query("SELECT test_id FROM oj_test_run WHERE user_id=? AND course_id=? ORDER BY test_launch_time desc LIMIT ? OFFSET ?;", userID, courseID, limit, offset)
 	if err != nil {
 		logging.Info(err)
 		return nil, err
@@ -157,6 +157,24 @@ func GetUserSubmitTests(courseID, userID uint32) ([]uint32, error) {
 		results = append(results, testID)
 	}
 	return results, nil
+}
+
+func GetUserSubmitsTestCount(courseID, userID uint32) (uint32, error) {
+	totalRow, err := db.Query("SELECT COUNT(*) FROM oj_test_run WHERE user_id=? AND course_id=?;", userID, courseID)
+	if err != nil {
+		logging.Info(err)
+		return 0, err
+	}
+	defer totalRow.Close()
+	var total uint32 = 0
+	for totalRow.Next() {
+		err := totalRow.Scan(&total)
+		if err != nil {
+			logging.Info(err)
+			continue
+		}
+	}
+	return total, nil
 }
 
 type TestCaseDetail struct {

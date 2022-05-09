@@ -113,8 +113,26 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 	return uint32(question_id), nil
 }
 
-func GetQuestionsByCourseID(courseID uint32, userID uint32) ([]Question, error) {
-	res, err := db.Query("SELECT question_id FROM oj_question_course WHERE course_id=?;", courseID)
+func GetQuestionTotalNumByCourseID(courseID uint32) (uint32, error) {
+	res, err := db.Query("SELECT COUNT(*) FROM oj_question_course WHERE course_id=?;", courseID)
+	if err != nil {
+		logging.Info(err)
+		return 0, err
+	}
+	defer res.Close()
+	var num uint32 = 0
+	for res.Next() {
+		err := res.Scan(&num)
+		if err != nil {
+			logging.Info(err)
+			continue
+		}
+	}
+	return num, nil
+}
+
+func GetQuestionsByCourseID(courseID uint32, userID uint32, limit uint32, offset uint32) ([]Question, error) {
+	res, err := db.Query("SELECT question_id FROM oj_question_course WHERE course_id=? LIMIT ? OFFSET ?;", courseID, limit, offset)
 	if err != nil {
 		logging.Info(err)
 		return nil, err

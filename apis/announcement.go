@@ -8,6 +8,7 @@ import (
 	"unilab-backend/database"
 	"unilab-backend/logging"
 	"unilab-backend/setting"
+	"unilab-backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -74,21 +75,16 @@ func CreateAnnouncementHandler(c *gin.Context) {
 }
 
 func FetchCourseAnnouncementsHandler(c *gin.Context) {
-	courseid_str := c.Query("courseid")
-	if courseid_str == "" {
-		ErrorResponse(c, ERROR, "there's not Course ID in query params.")
-		return
-	}
-	courseID, err := strconv.ParseUint(courseid_str, 10, 32)
+	courseID, err := utils.StringToUint32(c.Query("courseid"))
 	if err != nil {
-		ErrorResponse(c, ERROR, err.Error())
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	if !database.CheckCourseAccessPermission(uint32(courseID), c.MustGet("user_id").(uint32)) {
+	if !database.CheckCourseAccessPermission(courseID, c.MustGet("user_id").(uint32)) {
 		NoAccessResponse(c, "You are not allowed to access this course.")
 		return
 	}
-	announcements, err := database.GetAnnouncementsByCourseID(uint32(courseID))
+	announcements, err := database.GetAnnouncementsByCourseID(courseID)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
@@ -103,21 +99,16 @@ func FetchCourseAnnouncementsHandler(c *gin.Context) {
 }
 
 func GetAnnouncementHandler(c *gin.Context) {
-	annoid_str := c.Query("annoid")
-	if annoid_str == "" {
-		ErrorResponse(c, ERROR, "there's not Course ID or Announcement ID in query params.")
-		return
-	}
-	annoID, err := strconv.ParseUint(annoid_str, 10, 32)
+	annoID, err := utils.StringToUint32(c.Query("annoid"))
 	if err != nil {
-		ErrorResponse(c, ERROR, err.Error())
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	if !database.CheckAnnouncementAccessPermission(uint32(annoID), c.MustGet("user_id").(uint32)) {
+	if !database.CheckAnnouncementAccessPermission(annoID, c.MustGet("user_id").(uint32)) {
 		NoAccessResponse(c, "You are not allowed to access this announcement.")
 		return
 	}
-	info, err := database.GetAnnouncementInfo(uint32(annoID))
+	info, err := database.GetAnnouncementInfo(annoID, c.MustGet("user_id").(uint32))
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return

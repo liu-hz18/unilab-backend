@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -87,7 +88,7 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 		logging.Info(err)
 		return 0, err
 	}
-	// get announcement id
+	// get question id
 	question_id, err := result.LastInsertId()
 	if err != nil {
 		_ = tx.Rollback()
@@ -103,6 +104,40 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 		question_id,
 		questionForm.CourseID,
 	)
+	if err != nil {
+		_ = tx.Rollback()
+		logging.Info(err)
+		return 0, err
+	}
+	// add user question relation
+	// get course users
+	var userIDs = []uint32{}
+	rows, err := tx.Query("SELECT user_id FROM oj_user_course WHERE course_id=?;", questionForm.CourseID)
+	if err != nil {
+		_ = tx.Rollback()
+		logging.Info(err)
+		return 0, err
+	}
+	for rows.Next() {
+		var userID uint32
+		err := rows.Scan(&userID)
+		if err != nil {
+			_ = tx.Rollback()
+			logging.Info(err)
+			return 0, err
+		}
+		userIDs = append(userIDs, userID)
+	}
+	// create user <-> anno relation
+	var insertUserQuestion string = "INSERT INTO oj_user_question(user_id, question_id) VALUES "
+	for idx, userID := range userIDs {
+		if idx < len(userIDs)-1 {
+			insertUserQuestion += fmt.Sprintf("(%d, %d),", userID, question_id)
+		} else {
+			insertUserQuestion += fmt.Sprintf("(%d, %d);", userID, question_id)
+		}
+	}
+	_, err = tx.Exec(insertUserQuestion)
 	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)
@@ -196,7 +231,7 @@ func GetQuestionTitleAndTestCaseNumAndLanguageByID(questionID uint32) (string, u
 	return title, num, language, err
 }
 
-func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {
+func GetQuestionDetailByID(questionID, userID uint32) (QuestionInfo, error) {
 	question := QuestionInfo{}
 	var userid uint32
 	var issue_time time.Time
@@ -242,10 +277,38 @@ func GetQuestionDetailByID(questionID uint32) (QuestionInfo, error) {
 	question.Content = string(content)
 	// check appendix
 	if utils.FileExists(files_dir + "appendix.zip") {
-		question.AppendixFile = files_dir + "appendix.zip"
+		question.AppendixFile = "appendix.zip"
 	} else {
 		question.AppendixFile = ""
 	}
 	question.ID = questionID
+	// update access info
+	_, err = db.Exec("UPDATE oj_user_question SET access_count=access_count+1 WHERE question_id=? AND user_id=?;", questionID, userID)
+	if err != nil {
+		logging.Info(err)
+		return question, err
+	}
 	return question, nil
+}
+
+func GetQuestionAppendixPath(questionID uint32) (string, error) {
+	var title string
+	err := db.QueryRow("SELECT question_name FROM oj_question WHERE question_id=?;", questionID).Scan(
+		&title,
+	)
+	if err != nil {
+		return "", err
+	}
+	appendixPath := setting.QuestionRootDir + strconv.FormatUint(uint64(questionID), 10) + "_" + title + "/appendix.zip"
+	return appendixPath, nil
+}
+
+func UserAccessAppendix(questionID, userID uint32) error {
+	// update access info
+	_, err := db.Exec("UPDATE oj_user_question SET download_count=download_count+1 WHERE question_id=? AND user_id=?;", questionID, userID)
+	if err != nil {
+		logging.Info(err)
+		return err
+	}
+	return nil
 }

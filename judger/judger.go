@@ -1,22 +1,16 @@
 package judger
 
 import (
-	"bufio"
-	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 
 	"strconv"
 	"strings"
-	"syscall"
-	"time"
 	"unilab-backend/logging"
-	"unilab-backend/setting"
+	"unilab-backend/utils"
 )
 
 type TestConfig struct {
@@ -29,6 +23,7 @@ type TestConfig struct {
 	TotalScore  uint32
 	QuestionDir string
 	ProgramDir  string
+	PrevDir     string // 上次提交的文件夹路径
 	// TestCaseScore []uint32
 }
 
@@ -113,136 +108,6 @@ func check_test_case_dir(testCaseDir string, testCaseNum int) string {
 	return ""
 }
 
-func copyToDstDir(dstDir, srcDir string) error {
-	files, err := ioutil.ReadDir(srcDir)
-	if err != nil {
-		return err
-	}
-	for _, file := range files {
-		dstFile, err := os.Create(path.Join(dstDir, file.Name()))
-		if err != nil {
-			return err
-		}
-		srcFile, err := os.Open(path.Join(srcDir, file.Name()))
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(dstFile, srcFile)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func getErrorExitCode(err error) int {
-	// fail, non-zero exit status conditions
-	if exitError, ok := err.(*exec.ExitError); ok {
-		return exitError.Sys().(syscall.WaitStatus).ExitStatus()
-	}
-	// fails that do not define an exec.ExitError (e.g. unable to identify executable on system PATH)
-	return 1 // assign a default non-zero fail code value of 1
-}
-
-type Response struct {
-	StdOut    string
-	StdErr    string
-	ServerErr string
-	ExitCode  int
-}
-
-func Subprocess(rlimit string, timeout int, executable string, pwd string, args ...string) Response {
-	var res Response
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout+5)*time.Second)
-	defer cancel()
-	var cmdarray []string
-	if rlimit != "" {
-		cmdarray = append([]string{fmt.Sprintf("%s && %s", rlimit, executable)}, args...)
-	} else {
-		cmdarray = append([]string{executable}, args...)
-	}
-	logging.Info("Exec Command: bash -c " + strings.Join(cmdarray, " "))
-	cmd := exec.CommandContext(ctx, "bash", "-c", strings.Join(cmdarray, " "))
-	if pwd != "" {
-		cmd.Dir = pwd
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		logging.Info(err)
-		res.ServerErr = err.Error()
-		res.StdErr = ""
-		res.StdOut = ""
-		res.ExitCode = getErrorExitCode(err)
-		return res
-	}
-	defer stdout.Close()
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		logging.Info(err)
-		res.ServerErr = err.Error()
-		res.StdErr = ""
-		res.StdOut = ""
-		res.ExitCode = getErrorExitCode(err)
-		return res
-	}
-	defer stderr.Close()
-	outContent := ""
-	errContent := ""
-	err = cmd.Start()
-	if err != nil {
-		logging.Info("start command error: ", err)
-		res.ServerErr = err.Error()
-		res.StdErr = ""
-		res.StdOut = ""
-		res.ExitCode = 1
-		return res
-	}
-	scanner := bufio.NewScanner(stdout)
-	scanner.Split(bufio.ScanLines)
-	if setting.RunMode == "debug" {
-		for scanner.Scan() {
-			outContent += scanner.Text() + "\n"
-		}
-		logging.Info("stdout: ", outContent)
-	} else {
-		linecounter := 0
-		for scanner.Scan() && linecounter < 50 {
-			outContent += scanner.Text() + "\n"
-			linecounter += 1
-		}
-	}
-	scanner = bufio.NewScanner(stderr)
-	scanner.Split(bufio.ScanLines)
-	if setting.RunMode == "debug" {
-		for scanner.Scan() {
-			errContent += scanner.Text() + "\n"
-		}
-		logging.Info("stderr: ", errContent)
-	} else {
-		linecounter := 0
-		for scanner.Scan() && linecounter < 50 {
-			errContent += scanner.Text() + "\n"
-			linecounter += 1
-		}
-	}
-	_stdout := strings.Trim(outContent, " \n")
-	_stderr := strings.Trim(errContent, " \n")
-	err = cmd.Wait()
-	if err != nil {
-		logging.Info("server: ", err)
-		res.StdOut = _stdout
-		res.StdErr = _stderr
-		res.ServerErr = err.Error()
-		res.ExitCode = getErrorExitCode(err)
-		return res
-	}
-	res.StdOut = _stdout
-	res.StdErr = _stderr
-	res.ServerErr = ""
-	res.ExitCode = cmd.ProcessState.Sys().(syscall.WaitStatus).ExitStatus()
-	return res
-}
-
 func trimJSCompileOutputs(results string) string {
 	if results == "" {
 		return ""
@@ -298,7 +163,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 	// 	result.ExtraResult = err.Error()
 	// 	return result
 	// }
-	err = copyToDstDir(tempDirName, programDir)
+	err = utils.CopyToDstDir(tempDirName, programDir)
 	if err != nil {
 		result.ExtraResult = err.Error()
 		return result
@@ -333,7 +198,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 		return result
 	}
 	// compile
-	response := Subprocess(compileRlimits, 10, compileCmd, tempDirName)
+	response := utils.Subprocess(compileRlimits, 10, compileCmd, tempDirName)
 	logging.Info(response)
 	if response.ExitCode != 0 {
 		if response.StdErr != "" {
@@ -351,7 +216,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 	result.CompileResult = response.StdOut
 	// run testcase
 	for i := 1; i <= int(cfg.TestCaseNum); i++ {
-		response = Subprocess(
+		response = utils.Subprocess(
 			runtimeRlimits, timeOut, "./prebuilt/uoj_run", "", // NOTE: work in current dir, not in tmp dir
 			fmt.Sprintf("--tl=%d", cfg.TimeLimit),
 			fmt.Sprintf("--rtl=%d", cfg.TimeLimit+1000),
@@ -405,7 +270,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 		}
 		// check .ans and .out
 		if success {
-			response = Subprocess(
+			response = utils.Subprocess(
 				// need `sudo` to run with `CheckerResourceLimiter`
 				"", 10, "./prebuilt/uoj_run", "",
 				fmt.Sprintf("--tl=%d", (5*1000)),

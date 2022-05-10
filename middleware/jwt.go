@@ -30,14 +30,15 @@ func JWTMiddleWare() gin.HandlerFunc {
 		} else {
 			token = strings.Fields(token)[1]
 			claims, err = jwt.ParseToken(token)
-			logging.Info("claims:", claims)
 			if err != nil {
 				code = apis.ERROR_AUTH_CHECK_TOKEN_FAIL
 				data["err"] = err.Error()
+				logging.Info(err)
 			} else if time.Now().Unix() > claims.ExpiresAt {
 				code = apis.ERROR_AUTH_CHECK_TOKEN_TIMEOUT
 				data["err"] = "auth check token timeout."
 			}
+			logging.Info("access user id: ", claims.Userid, " | user name: ", claims.UserName)
 		}
 		if code != apis.SUCCESS {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -50,6 +51,7 @@ func JWTMiddleWare() gin.HandlerFunc {
 		}
 		// read database to get authorization role
 		user_type, err := database.GetUserType(claims.Userid)
+		user_id, _ := strconv.ParseUint(claims.Userid, 10, 32)
 		if err != nil {
 			code = apis.ERROR
 			data["err"] = err.Error()
@@ -63,7 +65,6 @@ func JWTMiddleWare() gin.HandlerFunc {
 			return
 		}
 		c.Set("user_type", user_type)
-		user_id, err := strconv.ParseUint(claims.Userid, 10, 32)
 		c.Set("user_id", uint32(user_id))
 		c.Next()
 	}

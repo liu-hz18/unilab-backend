@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"unilab-backend/database"
 	"unilab-backend/logging"
+	"unilab-backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -108,6 +109,26 @@ func FetchUserCoursesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
 		"msg":  MsgFlags[code],
+		"data": data,
+	})
+}
+
+func UserAccessCourse(c *gin.Context) {
+	courseID, err := utils.StringToUint32(c.Query("courseid"))
+	if err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	err = database.UserAccessCourse(courseID, c.MustGet("user_id").(uint32))
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
+	data := make(map[string]interface{})
+	data["result"] = "ok"
+	c.JSON(http.StatusOK, gin.H{
+		"code": SUCCESS,
+		"msg":  MsgFlags[SUCCESS],
 		"data": data,
 	})
 }

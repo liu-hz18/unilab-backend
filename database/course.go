@@ -83,7 +83,7 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 			insertCourseTeacher += fmt.Sprintf("(%d, %d,'%s');", course_id, teacherID, "teacher")
 		}
 	}
-	logging.Info(insertCourseTeacher)
+	// logging.Info(insertCourseTeacher)
 	_, err = tx.Exec(insertCourseTeacher)
 	if err != nil {
 		_ = tx.Rollback()
@@ -226,4 +226,32 @@ func CheckCourseAccessPermission(courseID, userID uint32) bool {
 		return false
 	}
 	return true
+}
+
+func UserAccessCourse(courseID, userID uint32) error {
+	_, err := db.Exec("UPDATE oj_user_course SET access_count=access_count+1 WHERE course_id=? AND user_id=?;", courseID, userID)
+	if err != nil {
+		logging.Info(err)
+		return err
+	}
+	return nil
+}
+
+func GetCourseUsers(courseID uint32) ([]uint32, error) {
+	var userIDs = []uint32{}
+	rows, err := db.Query("SELECT user_id FROM oj_user_course WHERE course_id=?;", courseID)
+	if err != nil {
+		logging.Info(err)
+		return userIDs, err
+	}
+	for rows.Next() {
+		var userID uint32
+		err := rows.Scan(&userID)
+		if err != nil {
+			logging.Info(err)
+			return userIDs, err
+		}
+		userIDs = append(userIDs, userID)
+	}
+	return userIDs, nil
 }

@@ -167,18 +167,12 @@ func FetchCourseQuestionsHandler(c *gin.Context) {
 
 // fetch question detail
 func FetchQuestionHandler(c *gin.Context) {
-	question_id_str := c.Query("questionid")
-	if question_id_str == "" {
-		ErrorResponse(c, ERROR, "there's not Question ID in query params.")
-		return
-	}
-	questionID_uint64, err := strconv.ParseUint(question_id_str, 10, 32)
+	questionID, err := utils.StringToUint32(c.Query("questionid"))
 	if err != nil {
-		ErrorResponse(c, ERROR, err.Error())
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	questionID := uint32(questionID_uint64)
-	question, err := database.GetQuestionDetailByID(questionID)
+	question, err := database.GetQuestionDetailByID(questionID, c.MustGet("user_id").(uint32))
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
@@ -194,25 +188,36 @@ func FetchQuestionHandler(c *gin.Context) {
 
 // fetch question appendix
 func FetchQuestionAppendix(c *gin.Context) {
-	appendix_path := c.PostForm("path")
-	if appendix_path == "" {
-		ErrorResponse(c, ERROR, "there's not Appendix Path in query params.")
+	questionID, err := utils.StringToUint32(c.PostForm("courseid"))
+	if err != nil {
+		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
 	}
-	if !utils.FileExists(appendix_path) {
+	// get appendix path
+	appendixPath, err := database.GetQuestionAppendixPath(questionID)
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
+	if !utils.FileExists(appendixPath) {
 		ErrorResponse(c, ERROR, "File DO NOT Exists.")
 		return
 	}
-	f, err := os.Open(appendix_path)
+	f, err := os.Open(appendixPath)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
 	}
 	defer f.Close()
+	err = database.UserAccessAppendix(questionID, c.MustGet("user_id").(uint32))
+	if err != nil {
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
 	// 以流方式下载文件，可以匹配所有类型的文件
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", "attachment; filename=appendix.zip")
 	c.Header("Content-Transfer-Encoding", "binary")
-	c.Header("Cache-Control", "no-cache")
-	c.File(appendix_path)
+	c.Header("Cache-Control", "max-age=864000")
+	c.File(appendixPath)
 }

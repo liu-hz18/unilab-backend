@@ -21,6 +21,7 @@ import (
 	"unilab-backend/osgrade"
 	"unilab-backend/setting"
 	"unilab-backend/taskqueue"
+	"unilab-backend/utils"
 	"unilab-backend/webhook"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,16 @@ func testJudger() {
 		ProgramDir:  "../../program",
 	}
 	result := judger.LaunchTest(config)
+	logging.Info(result)
+}
+
+func testDiff() {
+	result := utils.DirDiff("../../testcase", "../../program")
+	logging.Info(result)
+}
+
+func testStat() {
+	result := utils.DirStat("../../testcase")
 	logging.Info(result)
 }
 
@@ -94,6 +105,7 @@ func initRouter() *gin.Engine {
 		studentApis.GET("/fetch-all-testids", apis.FetchAllSubmitsIDs)
 		studentApis.POST("/update-tests", apis.UpdateTestDetails)
 		studentApis.GET("/fetch-submit-detail", apis.GetSubmitDetail)
+		studentApis.GET("/access-course", apis.UserAccessCourse)
 		studentApis.POST("/Os/Grade", osgrade.GetOsGradeHandler)
 		studentApis.GET("/Os/BranchGrade", osgrade.GetOsBranchGradeHandler)
 		studentApis.POST("/submit-task", taskqueue.TaskSubmitHandler)
@@ -163,6 +175,9 @@ func main() {
 		logging.Fatal("Server forced to shutdown:", err)
 	}
 	logging.Info("Server exiting...")
+
+	// testDiff()
+	// testStat()
 	// testOs()
 	// testJudger()
 }

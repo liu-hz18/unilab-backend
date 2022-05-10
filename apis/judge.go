@@ -64,7 +64,7 @@ func SubmitCodeHandler(c *gin.Context) {
 		return
 	}
 	// save upload code to disk
-	submit_base_path := setting.UserRootDir + "/" + strconv.FormatUint(uint64(userid), 10) + "/" + strconv.FormatUint(uint64(postform.QuestionID), 10) + "_" + questionName + "/" + strconv.FormatUint(uint64(count+1), 10) + "_test/"
+	submit_base_path := setting.UserRootDir + strconv.FormatUint(uint64(userid), 10) + "/" + strconv.FormatUint(uint64(postform.QuestionID), 10) + "_" + questionName + "/" + strconv.FormatUint(uint64(count+1), 10) + "_test/"
 	err = os.MkdirAll(submit_base_path, 0777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
@@ -81,6 +81,13 @@ func SubmitCodeHandler(c *gin.Context) {
 			return
 		}
 	}
+	// read last submit
+	prevDir, err := database.GetLastSubmitDir(postform.CourseID, c.MustGet("user_id").(uint32), postform.QuestionID)
+	if err != nil {
+		logging.Info(err)
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
 	// insert into test database
 	testID, err := database.CreateSubmitRecord(postform, userid, submit_base_path, testCaseNum)
 	if err != nil {
@@ -91,7 +98,7 @@ func SubmitCodeHandler(c *gin.Context) {
 	data["result"] = testID
 	code := SUCCESS
 	// run test
-	database.RunTest(testID)
+	database.RunTest(testID, postform.QuestionID, submit_base_path, prevDir, postform.Language)
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
 		"msg":  MsgFlags[code],

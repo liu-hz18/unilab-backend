@@ -1,11 +1,14 @@
 package database
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 	"unilab-backend/judger"
 	"unilab-backend/logging"
@@ -75,23 +78,14 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 	return uint32(testID), nil
 }
 
-func RunTest(testID uint32) {
-	// read test meta info from `oj_test_run`
-	var programDir string
-	var questionID uint32
-	var language string
-	err := db.QueryRow("SELECT save_dir, question_id, language from oj_test_run WHERE test_id=?;", testID).Scan(&programDir, &questionID, &language)
-	if err != nil {
-		logging.Error(err)
-		return
-	}
+func RunTest(testID, questionID uint32, nowDir, prevDir, language string) {
 	// read question meta info from `oj_question`
 	var name string
 	var timeLimit uint32
 	var memoryLimit uint32
 	var testcaseNum uint32
 	var totalScore uint32
-	err = db.QueryRow("SELECT question_name, question_time_limit, question_memory_limit, question_testcase_num, question_score from oj_question WHERE question_id=?;", questionID).Scan(
+	err := db.QueryRow("SELECT question_name, question_time_limit, question_memory_limit, question_testcase_num, question_score from oj_question WHERE question_id=?;", questionID).Scan(
 		&name,
 		&timeLimit,
 		&memoryLimit,
@@ -113,7 +107,8 @@ func RunTest(testID uint32) {
 		Language:    language,
 		TotalScore:  totalScore,
 		QuestionDir: questionDir,
-		ProgramDir:  programDir,
+		ProgramDir:  nowDir,
+		PrevDir:     prevDir,
 	}
 	// use goroutine pool
 	LaunchTestAsync(config)
@@ -193,6 +188,7 @@ type TestDetail struct {
 	Language        string
 	SubmitTime      time.Time
 	FileSize        string
+	FileNum         uint32
 	PassSubmission  uint32
 	TotalSubmission uint32
 	TestCases       []TestCaseDetail
@@ -216,16 +212,21 @@ func GetTestDetailsByIDs(testIDs []uint32) []TestDetail {
 		var testDetail TestDetail
 		testDetail.ID = testID
 		var saveDir string
-		err := db.QueryRow("SELECT test_launch_time, question_id, language, save_dir FROM oj_test_run WHERE test_id=?;", testID).Scan(
+		var fileSize uint32
+		err := db.QueryRow("SELECT test_launch_time, question_id, language, save_dir, score, file_size, file_num FROM oj_test_run WHERE test_id=?;", testID).Scan(
 			&testDetail.SubmitTime,
 			&testDetail.QuestionID,
 			&testDetail.Language,
 			&saveDir,
+			&testDetail.Score,
+			&fileSize,
+			&testDetail.FileNum,
 		)
 		if err != nil {
 			logging.Info(err)
 			continue
 		}
+		testDetail.FileSize = fmt.Sprintf("%d B", fileSize)
 		// read question details
 		var testCaseNum uint32
 		err = db.QueryRow("SELECT question_name, question_score, question_test_ac_num, question_test_total_num, question_testcase_num FROM oj_question WHERE question_id=?;", testDetail.QuestionID).Scan(
@@ -239,13 +240,6 @@ func GetTestDetailsByIDs(testIDs []uint32) []TestDetail {
 			logging.Info(err)
 			continue
 		}
-		// read file sizes
-		fileSize, err := utils.GetDirSize(saveDir)
-		if err != nil {
-			logging.Info(err)
-			continue
-		}
-		testDetail.FileSize = fmt.Sprintf("%d B", fileSize)
 		// read test-run results
 		rows, err := db.Query("SELECT testcase_run_id, testcase_run_state, testcase_run_time_elapsed, testcase_run_memory_usage FROM oj_testcase_run WHERE test_id=? ORDER BY testcase_rank ASC;", testID)
 		if err != nil {
@@ -254,7 +248,6 @@ func GetTestDetailsByIDs(testIDs []uint32) []TestDetail {
 		}
 		defer rows.Close()
 		var validCaseCount uint32 = 0
-		var passCount uint32 = 0
 		for rows.Next() {
 			var testcaseDetail TestCaseDetail
 			err := rows.Scan(&testcaseDetail.ID, &testcaseDetail.State, &testcaseDetail.TimeElasped, &testcaseDetail.MemoryUsage)
@@ -263,22 +256,18 @@ func GetTestDetailsByIDs(testIDs []uint32) []TestDetail {
 				continue
 			}
 			validCaseCount += 1
-			if testcaseDetail.State == "Accepted" {
-				passCount += 1
-			}
 			testDetail.TestCases = append(testDetail.TestCases, testcaseDetail)
 		}
 		if validCaseCount != testCaseNum {
 			logging.Info("ERROR: test case num DISMATCH between `oj_question` AND `oj_testcase_run`")
 			continue
 		}
-		testDetail.Score = utils.CeilDivUint32(testDetail.TotalScore*passCount, testCaseNum)
 		testDetails = append(testDetails, testDetail)
 	}
 	return testDetails
 }
 
-func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
+func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.StatResult, diffResult utils.DiffResult) {
 	tx, err := db.Begin()
 	if err != nil {
 		if tx != nil {
@@ -316,7 +305,7 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
 				judger.RunResultMap[code],
 				runResults.TimeElasped,
 				runResults.MemoryUsage,
-				runResults.CheckerOutput,
+				strings.Trim(runResults.CheckerOutput, " \t\n"),
 				judgerResult.TestID,
 				rank,
 			)
@@ -360,13 +349,32 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult) {
 		UPDATE oj_test_run SET
 		compile_result=?,
 		extra_result=?,
-		score=?
+		score=?,
+		pass_num=?,
+
+		file_size=?,
+		file_num=?,
+		file_lines=?,
+		
+		diff_file=?,
+		diff_insert=?,
+		diff_delete=?
 		WHERE
 		test_id=?;
 	`,
-		judgerResult.CompileResult,
-		judgerResult.ExtraResult,
+		strings.Trim(judgerResult.CompileResult, " \t\n"),
+		strings.Trim(judgerResult.ExtraResult, " \t\n"),
 		totalScore,
+		passCount,
+
+		statResult.DirSize,
+		statResult.FileNum,
+		statResult.FileLines,
+
+		diffResult.FileChanged,
+		diffResult.InsertLines,
+		diffResult.DeleteLines,
+
 		judgerResult.TestID,
 	)
 	logging.Info("extra result:", judgerResult.ExtraResult)
@@ -424,4 +432,17 @@ func GetSubmitDetail(testID uint32) SubmitDetail {
 		result.Fileinfo = append(result.Fileinfo, info)
 	}
 	return result
+}
+
+// get last submit file dir, if no submit, return ""
+func GetLastSubmitDir(courseID, userID, questionID uint32) (string, error) {
+	var dir string
+	err := db.QueryRow("SELECT save_dir FROM oj_test_run WHERE user_id=? AND question_id=? AND course_id=? ORDER BY test_launch_time desc;", userID, questionID, courseID).Scan(
+		&dir,
+	)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		logging.Info("no previous submit")
+		return "", nil
+	}
+	return dir, err
 }

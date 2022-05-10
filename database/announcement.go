@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -58,6 +59,40 @@ func CreateNewAnnouncement(announcementForm CreateAnnouncementForm) (uint32, err
 		logging.Info(err)
 		return 0, err
 	}
+	// create announcement and user relation
+	// get course users
+	var userIDs = []uint32{}
+	rows, err := tx.Query("SELECT user_id FROM oj_user_course WHERE course_id=?;", announcementForm.CourseID)
+	if err != nil {
+		_ = tx.Rollback()
+		logging.Info(err)
+		return 0, err
+	}
+	for rows.Next() {
+		var userID uint32
+		err := rows.Scan(&userID)
+		if err != nil {
+			_ = tx.Rollback()
+			logging.Info(err)
+			return 0, err
+		}
+		userIDs = append(userIDs, userID)
+	}
+	// create user <-> anno relation
+	var insertUserAnno string = "INSERT INTO oj_user_announcement(user_id, announcement_id) VALUES "
+	for idx, userID := range userIDs {
+		if idx < len(userIDs)-1 {
+			insertUserAnno += fmt.Sprintf("(%d, %d),", userID, announcement_id)
+		} else {
+			insertUserAnno += fmt.Sprintf("(%d, %d);", userID, announcement_id)
+		}
+	}
+	_, err = tx.Exec(insertUserAnno)
+	if err != nil {
+		_ = tx.Rollback()
+		logging.Info(err)
+		return 0, err
+	}
 	_ = tx.Commit()
 	logging.Info("CreateNewAnnouncement() commit trans action successfully. ID: ", announcement_id)
 	return uint32(announcement_id), nil
@@ -96,7 +131,7 @@ func GetAnnouncementsByCourseID(course_id uint32) ([]Announcement, error) {
 	return announcements, nil
 }
 
-func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
+func GetAnnouncementInfo(annoid, userID uint32) (AnnouncementInfo, error) {
 	info := AnnouncementInfo{}
 	info.ID = annoid
 	tx, err := db.Begin()
@@ -119,12 +154,14 @@ func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 	)
 	info.IssueTime = issue_time.Format("2006/01/02 15:04")
 	if err != nil {
+		_ = tx.Rollback()
 		logging.Info(err)
 		return info, err
 	}
 	var course_name string
 	err = tx.QueryRow("SELECT course_name FROM oj_course WHERE course_id=?;", course_id).Scan(&course_name)
 	if err != nil {
+		_ = tx.Rollback()
 		logging.Info(err)
 		return info, err
 	}
@@ -132,16 +169,25 @@ func GetAnnouncementInfo(annoid uint32) (AnnouncementInfo, error) {
 	file_path := setting.CourseRootDir + strconv.FormatUint(uint64(course_id), 10) + "_" + course_name + "/announcements/" + strconv.FormatUint(uint64(annoid), 10) + "_announcement.md"
 	f, err := os.Open(file_path)
 	if err != nil {
+		_ = tx.Rollback()
 		logging.Info(err)
 		return info, err
 	}
 	defer f.Close()
 	content, err := ioutil.ReadAll(f)
 	if err != nil {
+		_ = tx.Rollback()
 		logging.Info(err)
 		return info, err
 	}
 	info.Content = string(content)
+	// log access
+	_, err = tx.Exec("UPDATE oj_user_announcement SET access_count=access_count+1 WHERE announcement_id=? AND user_id=?;", annoid, userID)
+	if err != nil {
+		_ = tx.Rollback()
+		logging.Info(err)
+		return info, err
+	}
 	_ = tx.Commit()
 	logging.Info("GetAnnouncementInfo() commit trans action successfully.")
 	return info, nil

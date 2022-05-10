@@ -312,3 +312,11 @@ func UserAccessAppendix(questionID, userID uint32) error {
 	}
 	return nil
 }
+
+func CheckQuestionAccessPermission(questionID, userID uint32) bool {
+	var count uint32
+	err := db.QueryRow("SELECT access_count FROM oj_user_question WHERE user_id=? AND question_id=?;", userID, questionID).Scan(
+		&count,
+	)
+	return err == nil
+}

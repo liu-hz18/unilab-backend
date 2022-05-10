@@ -188,9 +188,14 @@ func FetchQuestionHandler(c *gin.Context) {
 
 // fetch question appendix
 func FetchQuestionAppendix(c *gin.Context) {
-	questionID, err := utils.StringToUint32(c.PostForm("courseid"))
+	questionID, err := utils.StringToUint32(c.PostForm("questionid"))
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
+		return
+	}
+	// check permission
+	if !database.CheckQuestionAccessPermission(questionID, c.MustGet("user_id").(uint32)) {
+		ErrorResponse(c, ERROR, "You are not allowed to access this question!")
 		return
 	}
 	// get appendix path
@@ -200,6 +205,7 @@ func FetchQuestionAppendix(c *gin.Context) {
 		return
 	}
 	if !utils.FileExists(appendixPath) {
+		logging.Info("appendixPath: ", appendixPath, " DO NOT Exists.")
 		ErrorResponse(c, ERROR, "File DO NOT Exists.")
 		return
 	}

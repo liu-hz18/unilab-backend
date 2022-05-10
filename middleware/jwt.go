@@ -37,8 +37,9 @@ func JWTMiddleWare() gin.HandlerFunc {
 			} else if time.Now().Unix() > claims.ExpiresAt {
 				code = apis.ERROR_AUTH_CHECK_TOKEN_TIMEOUT
 				data["err"] = "auth check token timeout."
+			} else {
+				logging.Info("access user id: ", claims.Userid, " | user name: ", claims.UserName)
 			}
-			logging.Info("access user id: ", claims.Userid, " | user name: ", claims.UserName)
 		}
 		if code != apis.SUCCESS {
 			c.JSON(http.StatusUnauthorized, gin.H{

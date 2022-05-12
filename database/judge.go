@@ -22,7 +22,7 @@ type SubmitCodeForm struct {
 	Language   string `json:"language" form:"language" uri:"language" binding:"required"`
 }
 
-func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, testcase_num uint32) (uint32, error) {
+func CreateSubmitRecord(form SubmitCodeForm, userid uint32, testcase_num uint32) (uint32, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		if tx != nil {
@@ -32,16 +32,15 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 	}
 	// insert into test-run table
 	result, err := tx.Exec(`INSERT INTO oj_test_run
-		(test_launch_time, course_id, question_id, user_id, language, save_dir)
+		(test_launch_time, course_id, question_id, user_id, language)
 		VALUES
-		(?, ?, ?, ?, ?, ?);
+		(?, ?, ?, ?, ?);
 	`,
 		time.Now(),
 		form.CourseID,
 		form.QuestionID,
 		userid,
 		form.Language,
-		save_dir,
 	)
 	if err != nil {
 		_ = tx.Rollback()
@@ -49,13 +48,6 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 		return 0, err
 	}
 	testID, err := result.LastInsertId()
-	if err != nil {
-		_ = tx.Rollback()
-		logging.Info(err)
-		return 0, err
-	}
-	// update question submit count
-	_, err = tx.Exec(`UPDATE oj_question SET question_test_total_num=question_test_total_num+1 WHERE question_id=?;`, form.QuestionID)
 	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)
@@ -75,6 +67,12 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, save_dir string, tes
 	}
 	_ = tx.Commit()
 	logging.Info("CreateSubmitRecord() commit trans action successfully.")
+	// update question submit count
+	_, err = db.Exec(`UPDATE oj_question SET question_test_total_num=question_test_total_num+1 WHERE question_id=?;`, form.QuestionID)
+	if err != nil {
+		logging.Error(err)
+		return 0, err
+	}
 	return uint32(testID), nil
 }
 
@@ -344,13 +342,14 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.S
 			}
 		}
 	}
-	totalScore := utils.CeilDivUint32(judgerResult.TotalScore*passCount, judgerResult.CaseNum)
+	finalScore := utils.CeilDivUint32(judgerResult.TotalScore*passCount, judgerResult.CaseNum)
 	_, err = tx.Exec(`
 		UPDATE oj_test_run SET
 		compile_result=?,
 		extra_result=?,
 		score=?,
 		pass_num=?,
+		save_dir=?,
 
 		file_size=?,
 		file_num=?,
@@ -364,8 +363,9 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.S
 	`,
 		strings.Trim(judgerResult.CompileResult, " \t\n"),
 		strings.Trim(judgerResult.ExtraResult, " \t\n"),
-		totalScore,
+		finalScore,
 		passCount,
+		judgerResult.ProgramDir,
 
 		statResult.DirSize,
 		statResult.FileNum,
@@ -383,17 +383,17 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.S
 		logging.Info(err)
 		return
 	}
+	_ = tx.Commit()
+	logging.Info("UpdateTestCaseRunResults() commit trans action successfully.")
+
 	if is_ac {
 		// update question submit count
-		_, err = tx.Exec(`UPDATE oj_question SET question_test_ac_num=question_test_ac_num+1 WHERE question_id=?;`, judgerResult.QuestionID)
+		_, err = db.Exec(`UPDATE oj_question SET question_test_ac_num=question_test_ac_num+1 WHERE question_id=?;`, judgerResult.QuestionID)
 		if err != nil {
-			_ = tx.Rollback()
-			logging.Info(err)
+			logging.Error(err)
 			return
 		}
 	}
-	_ = tx.Commit()
-	logging.Info("UpdateTestCaseRunResults() commit trans action successfully.")
 }
 
 func GetSubmitDetail(testID uint32) SubmitDetail {

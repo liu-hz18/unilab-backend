@@ -21,6 +21,7 @@ func DirDiff(prevDir, nowDir string) DiffResult {
 		return result
 	}
 	response := Subprocess("", 5, "git diff", "",
+		"--no-index",
 		"--numstat",
 		"--no-color",
 		"--ignore-space-at-eol",

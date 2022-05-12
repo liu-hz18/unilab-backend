@@ -40,6 +40,7 @@ type TestCaseResult struct {
 type TestResult struct {
 	QuestionID    uint32
 	TestID        uint32
+	ProgramDir    string
 	CaseNum       uint32
 	CompileResult string
 	ExtraResult   string
@@ -131,6 +132,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 	result.TestID = cfg.TestID
 	result.CaseNum = cfg.TestCaseNum
 	result.TotalScore = cfg.TotalScore
+	result.ProgramDir = cfg.ProgramDir
 	result.CompileResult = ""
 	result.ExtraResult = ""
 	result.RunResults = []TestCaseResult{}

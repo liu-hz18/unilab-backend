@@ -57,14 +57,21 @@ func SubmitCodeHandler(c *gin.Context) {
 		ErrorResponse(c, INVALID_PARAMS, fmt.Sprintf("Submit Files does not match contain %s.", judger.JudgerConfig[questionLanguage].NeedFile))
 		return
 	}
-	// get test count
-	count, err := database.GetQuestionSubmitCounts(postform.QuestionID, userid)
+	// read last submit
+	prevDir, err := database.GetLastSubmitDir(postform.CourseID, c.MustGet("user_id").(uint32), postform.QuestionID)
+	if err != nil {
+		logging.Info(err)
+		ErrorResponse(c, ERROR, err.Error())
+		return
+	}
+	// insert into test database
+	testID, err := database.CreateSubmitRecord(postform, userid, testCaseNum)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
 	}
 	// save upload code to disk
-	submit_base_path := setting.UserRootDir + strconv.FormatUint(uint64(userid), 10) + "/" + strconv.FormatUint(uint64(postform.QuestionID), 10) + "_" + questionName + "/" + strconv.FormatUint(uint64(count+1), 10) + "_test/"
+	submit_base_path := setting.UserRootDir + strconv.FormatUint(uint64(userid), 10) + "/" + strconv.FormatUint(uint64(postform.QuestionID), 10) + "_" + questionName + "/" + strconv.FormatUint(uint64(testID), 10) + "_test/"
 	err = os.MkdirAll(submit_base_path, 0777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
@@ -80,19 +87,6 @@ func SubmitCodeHandler(c *gin.Context) {
 			ErrorResponse(c, ERROR, err.Error())
 			return
 		}
-	}
-	// read last submit
-	prevDir, err := database.GetLastSubmitDir(postform.CourseID, c.MustGet("user_id").(uint32), postform.QuestionID)
-	if err != nil {
-		logging.Info(err)
-		ErrorResponse(c, ERROR, err.Error())
-		return
-	}
-	// insert into test database
-	testID, err := database.CreateSubmitRecord(postform, userid, submit_base_path, testCaseNum)
-	if err != nil {
-		ErrorResponse(c, ERROR, err.Error())
-		return
 	}
 	data := make(map[string]interface{})
 	data["result"] = testID

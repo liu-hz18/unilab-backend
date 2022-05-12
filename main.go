@@ -25,6 +25,8 @@ import (
 	"unilab-backend/webhook"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/gin-contrib/pprof" // for profiling
 )
 
 func testJudger() {
@@ -84,6 +86,10 @@ func initRouter() *gin.Engine {
 		c.String(http.StatusOK, "hello World!")
 	})
 	// Routes
+	// system profiling, access https://lab.cs.tsinghua.edu.cn/unilab/api/debug/pprof/
+	// to see CPU profiling: go tool pprof -http=":8081" https://lab.cs.tsinghua.edu.cn/unilab/api/debug/pprof/profile
+	// to see MEM profiling: go tool pprof -http=":8081" https://lab.cs.tsinghua.edu.cn/unilab/api/debug/pprof/heap
+	pprof.Register(router)
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.GET("/login", auth.UserLoginHandler)
 	router.GET("/callback", auth.GitLabCallBackHandler)
@@ -91,7 +97,7 @@ func initRouter() *gin.Engine {
 	router.GET("/Os/FetchGrade", osgrade.FetchOsGrade)
 	router.POST("/webhook/os", webhook.OsWebhookHandler)
 	studentApis := router.Group("/student")
-	studentApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
+	studentApis.Use(middleware.RateLimitMiddleware(), middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))
 	{
 		studentApis.GET("/fetch-my-course", apis.FetchUserCoursesHandler)
 		studentApis.GET("/fetch-announcement", apis.FetchCourseAnnouncementsHandler)
@@ -111,7 +117,7 @@ func initRouter() *gin.Engine {
 		studentApis.POST("/submit-task", taskqueue.TaskSubmitHandler)
 	}
 	teacherApis := router.Group("/teacher")
-	teacherApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
+	teacherApis.Use(middleware.RateLimitMiddleware(), middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserTeacher))
 	{
 		teacherApis.POST("/create-course", apis.CreateCourseHandler)
 		teacherApis.GET("/fetch-all-user", apis.GetAllUsersHandler)
@@ -124,6 +130,7 @@ func initRouter() *gin.Engine {
 	adminApis.Use(middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserAdmin))
 	{
 		adminApis.POST("/add-teachers", apis.AddTeachersHandler)
+		adminApis.POST("/submit-code", apis.SubmitCodeHandler)
 	}
 
 	return router

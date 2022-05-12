@@ -32,6 +32,7 @@ var (
 	HttpPort     int
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
+	RateLimit    int
 
 	// database
 	DBType       string
@@ -86,6 +87,7 @@ func init() {
 	HttpPort = sec.Key("HTTP_PORT").MustInt(1323)
 	ReadTimeout = time.Duration(sec.Key("READ_TIMEOUT").MustInt(60)) * time.Second
 	WriteTimeout = time.Duration(sec.Key("WRITE_TIMEOUT").MustInt(60)) * time.Second
+	RateLimit = sec.Key("RATE_LIMIT").MustInt(2)
 
 	sec, err = Cfg.GetSection("database")
 	if err != nil {

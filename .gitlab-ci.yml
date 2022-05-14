@@ -30,7 +30,7 @@ golangci-lint:
   extends: .go-cache
   allow_failure: true
   script:
-    - golangci-lint run -v
+    - $(go env GOPATH)/bin/golangci-lint run -v
 
 compile:
   tags:

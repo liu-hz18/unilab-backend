@@ -1,19 +1,18 @@
 image: golang:latest
 
 .go-cache:
-    variables:
-        GOPATH: $CI_PROJECT_DIR/.go
-    cache:
-      paths:
-        - .go/pkg/mod/
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+  cache:
+    paths:
+      - .go/pkg/mod/
 
 variables:
   OUTPUT_NAME: backend-main
 
 stages:
-    - lint
-    - build
-    - deploy
+  - lint
+  - build
 
 before_script:
   - echo "before_script"
@@ -24,19 +23,23 @@ before_script:
   - go env -w GOPROXY="https://goproxy.io,direct"
 
 golangci-lint:
-    image: golangci/golangci-lint:v1.46.1
-    stage: lint
-    extends: .go-cache
-    allow_failure: true
-    script:
-      - golangci-lint run -v
+  tags:
+    - unilab-backend-runner
+  image: golangci/golangci-lint:v1.46.1
+  stage: lint
+  extends: .go-cache
+  allow_failure: true
+  script:
+    - golangci-lint run -v
 
 compile:
-    stage: build
-    extends: .go-cache
-    script:
-      - go mod download
-      - go build -race -ldflags="-s -w" -o $OUTPUT_NAME
-    artifacts:
-      paths:
-        - $OUTPUT_NAME
+  tags:
+    - unilab-backend-runner
+  stage: build
+  extends: .go-cache
+  script:
+    - go mod download
+    - go build -race -ldflags="-s -w" -o $OUTPUT_NAME
+  artifacts:
+    paths:
+      - $OUTPUT_NAME

@@ -21,7 +21,7 @@ golangci-lint:
   stage: lint
   allow_failure: true
   script:
-    - $(go env GOPATH)/bin/golangci-lint run -v
+    - $(go env GOPATH)/bin/golangci-lint run -v -E gofmt -E revive -E gocyclo -E misspell -E cyclop -E gocritic ./...
 
 compile:
   tags:

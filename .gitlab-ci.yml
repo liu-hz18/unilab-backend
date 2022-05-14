@@ -1,12 +1,5 @@
 image: golang:latest
 
-.go-cache:
-  variables:
-    GOPATH: $CI_PROJECT_DIR/.go
-  cache:
-    paths:
-      - .go/pkg/mod/
-
 variables:
   OUTPUT_NAME: backend-main
 
@@ -27,7 +20,6 @@ golangci-lint:
     - unilab-backend-runner
   image: golangci/golangci-lint:v1.46.1
   stage: lint
-  extends: .go-cache
   allow_failure: true
   script:
     - $(go env GOPATH)/bin/golangci-lint run -v
@@ -36,7 +28,6 @@ compile:
   tags:
     - unilab-backend-runner
   stage: build
-  extends: .go-cache
   script:
     - go mod download
     - go build -race -ldflags="-s -w" -o $OUTPUT_NAME

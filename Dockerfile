@@ -57,24 +57,25 @@ RUN echo "deb-src [signed-by=$NODE_KEYRING] https://deb.nodesource.com/$NODE_VER
 # install nodejs
 RUN DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get install -y nodejs
 RUN /usr/bin/node -v
-# install java17 & java14
+# install java17 & java14 & golang
+ENV GOLANG_VERSION=1.18.2
 RUN mkdir -p /downloads
 RUN wget -q -O /downloads/jdk-17_linux-x64_bin.tar.gz https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.tar.gz \
     && tar -zxf /downloads/jdk-17_linux-x64_bin.tar.gz -C /usr/lib/jvm \
     && wget -q -O /downloads/openjdk-14+36_linux-x64_bin.tar.gz https://download.java.net/openjdk/jdk14/ri/openjdk-14+36_linux-x64_bin.tar.gz \
     && tar -zxf /downloads/openjdk-14+36_linux-x64_bin.tar.gz -C /usr/lib/jvm/ \
+    && wget -q -O /downloads/go$GOLANG_VERSION.linux-amd64.tar.gz https://golang.google.cn/dl/go$GOLANG_VERSION.linux-amd64.tar.gz \
+    && tar -zxf /downloads/go$GOLANG_VERSION.linux-amd64.tar.gz -C /usr/local/ \
     && mv /usr/lib/jvm/jdk-17.0.3.1 /usr/lib/jvm/java-17-oracle-amd64 \
     && mv /usr/lib/jvm/jdk-14 /usr/lib/jvm/java-14-openjdk-amd64 \
     && rm /downloads/jdk-17_linux-x64_bin.tar.gz \
-    && rm /downloads/openjdk-14+36_linux-x64_bin.tar.gz
+    && rm /downloads/openjdk-14+36_linux-x64_bin.tar.gz \
+    && rm /downloads/go$GOLANG_VERSION.linux-amd64.tar.gz
 # check jvm dir
 RUN ls -al /usr/lib/jvm
 RUN ls /usr/lib/jvm/java-17-oracle-amd64
 RUN ls /usr/lib/jvm/java-14-openjdk-amd64
-# install golang
-RUN wget -q -O /downloads/go1.18.1.linux-amd64.tar.gz https://golang.google.cn/dl/go1.18.1.linux-amd64.tar.gz \
-    && tar -zxf /downloads/go1.18.1.linux-amd64.tar.gz -C /usr/local/ \
-    && rm /downloads/go1.18.1.linux-amd64.tar.gz
+# check golang
 RUN /usr/local/go/bin/go version
 
 # install rust and config

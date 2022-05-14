@@ -10,7 +10,6 @@ stages:
 before_script:
   - echo "before_script"
   - git version
-  - mkdir -p .go
   - go version
   - go env -w GO111MODULE=on
   - go env -w GOPROXY="https://goproxy.io,direct"

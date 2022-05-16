@@ -4,15 +4,16 @@ import (
 	// "fmt"
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"unilab-backend/logging"
 	"unilab-backend/setting"
 
 	// "net/url"
 	"encoding/json"
-	"io/ioutil"
 
 	ytask "github.com/gojuukaze/YTask/v2"
 )
@@ -38,7 +39,7 @@ type GradeRecord struct {
 }
 
 type Test struct {
-	//member definition
+	// member definition
 	Id   int    `json:"Id"`
 	Name string `json:"Name"`
 	// Passed bool `json:"Passed"`
@@ -67,7 +68,7 @@ func TaskGrade(task Task) []GradeRecord {
 	if err != nil {
 		return nil
 	}
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil
 	}
@@ -94,7 +95,7 @@ func TaskGrade(task Task) []GradeRecord {
 	// if err != nil{
 	// 	return nil
 	// }
-	// body,err := ioutil.ReadAll(response.Body)
+	// body,err := io.ReadAll(response.Body)
 	// if err != nil{
 	// 	return nil
 	// }
@@ -127,5 +128,8 @@ func InitConsumer() {
 
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	ser.Shutdown(context.Background())
+	err := ser.Shutdown(context.Background())
+	if err != nil {
+		logging.Error(err.Error())
+	}
 }

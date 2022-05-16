@@ -2,7 +2,6 @@ package utils
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,7 +15,7 @@ func FileExists(path string) bool {
 }
 
 func CopyToDstDir(dstDir, srcDir string) error {
-	files, err := ioutil.ReadDir(srcDir)
+	files, err := os.ReadDir(srcDir)
 	if err != nil {
 		return err
 	}
@@ -38,7 +37,7 @@ func CopyToDstDir(dstDir, srcDir string) error {
 }
 
 func GetDirSize(path string) (uint32, error) {
-	var size uint32 = 0
+	var size uint32
 	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
 			size += uint32(info.Size())

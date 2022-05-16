@@ -27,7 +27,7 @@ func CreateAnnouncementHandler(c *gin.Context) {
 		return
 	}
 	// get coursename
-	course_name, err := database.GetCourseByID(postform.CourseID)
+	courseName, err := database.GetCourseByID(postform.CourseID)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
@@ -39,8 +39,8 @@ func CreateAnnouncementHandler(c *gin.Context) {
 		return
 	}
 	// save file to disk
-	base_path := setting.CourseRootDir + strconv.FormatUint(uint64(postform.CourseID), 10) + "_" + course_name + "/announcements/"
-	err = os.MkdirAll(base_path, 0777)
+	basePath := setting.CourseRootDir + strconv.FormatUint(uint64(postform.CourseID), 10) + "_" + courseName + "/announcements/"
+	err = os.MkdirAll(basePath, 0777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
@@ -51,7 +51,7 @@ func CreateAnnouncementHandler(c *gin.Context) {
 		return
 	}
 	// insert into database
-	announcement_id, err := database.CreateNewAnnouncement(postform)
+	announcementID, err := database.CreateNewAnnouncement(postform)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
@@ -59,7 +59,7 @@ func CreateAnnouncementHandler(c *gin.Context) {
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
 		logging.Info("receive file: ", filename)
-		dst := base_path + strconv.FormatUint(uint64(announcement_id), 10) + "_announcement.md"
+		dst := basePath + strconv.FormatUint(uint64(announcementID), 10) + "_announcement.md"
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
 			return

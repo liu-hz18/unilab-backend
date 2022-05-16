@@ -25,6 +25,7 @@ import (
 	"unilab-backend/webhook"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql" // init mysql db
 
 	"github.com/gin-contrib/pprof" // for profiling
 )
@@ -35,7 +36,7 @@ func testJudger() {
 		TimeLimit:   1000,       // ms
 		MemoryLimit: 512 * 1024, // KB
 		TestCaseNum: 3,
-		Language:    "go",
+		Language:    "java11",
 		QuestionDir: "../../testcase",
 		ProgramDir:  "../../program",
 	}
@@ -54,7 +55,11 @@ func testStat() {
 }
 
 func testOs() {
-	database.GetGradeDetailsById(2018011302)
+	records, err := database.GetGradeDetailsByID(2018011302)
+	if err != nil {
+		logging.Error(err.Error())
+	}
+	logging.Info(records)
 }
 
 func initRouter() *gin.Engine {
@@ -144,7 +149,7 @@ func main() {
 
 	gin.SetMode(setting.RunMode)
 	router := initRouter()
-	endPoint := fmt.Sprintf(":%d", setting.HttpPort)
+	endPoint := fmt.Sprintf(":%d", setting.HTTPPort)
 	maxHeaderBytes := 1 << 20
 
 	server := &http.Server{

@@ -26,7 +26,10 @@ func init() {
 }
 
 func LaunchTestAsync(config judger.TestConfig) {
-	p.Invoke(config)
+	err := p.Invoke(config)
+	if err != nil {
+		logging.Error(err.Error())
+	}
 }
 
 func LaunchTestSync(config judger.TestConfig) {

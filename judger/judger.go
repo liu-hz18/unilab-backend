@@ -2,7 +2,6 @@ package judger
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,6 +11,9 @@ import (
 	"unilab-backend/logging"
 	"unilab-backend/utils"
 )
+
+// const BackendRootDir = "/home/cslab/unilab/unilab-backend/"
+const BackendRootDir = "/unilab-backend/"
 
 type TestConfig struct {
 	QuestionID  uint32
@@ -28,7 +30,7 @@ type TestConfig struct {
 }
 
 type TestCaseResult struct {
-	TimeElasped   uint32
+	TimeElapsed   uint32
 	MemoryUsage   uint32
 	ExitCode      int
 	RunStatus     uint32
@@ -48,24 +50,24 @@ type TestResult struct {
 	RunResults    []TestCaseResult
 }
 
-func check_uint_range(value, low, high uint32) bool {
+func CheckUIntRange(value, low, high uint32) bool {
 	if value >= low && value <= high {
 		return true
 	}
 	return false
 }
 
-func check_cfg(cfg TestConfig) string {
+func checkConfig(cfg TestConfig) string {
 	var message string
-	if !check_uint_range(cfg.TestCaseNum, 1, 100) {
+	if !CheckUIntRange(cfg.TestCaseNum, 1, 100) {
 		message = "Test Case Num Not valid!"
 		return message
 	}
-	if !check_uint_range(cfg.TimeLimit, 1, 10000) {
+	if !CheckUIntRange(cfg.TimeLimit, 1, 10000) {
 		message = "Test Time Limit Not valid!"
 		return message
 	}
-	if !check_uint_range(cfg.MemoryLimit, 1, 2048*1024) {
+	if !CheckUIntRange(cfg.MemoryLimit, 1, 2048*1024) {
 		message = "Test Memory Limit Not valid!"
 		return message
 	}
@@ -82,8 +84,8 @@ func check_cfg(cfg TestConfig) string {
 	return ""
 }
 
-func check_test_case_dir(testCaseDir string, testCaseNum int) string {
-	// files, err := ioutil.ReadDir(testCaseDir)
+func checkTestCaseDir(testCaseDir string, testCaseNum int) string {
+	// files, err := io.ReadDir(testCaseDir)
 	// if err != nil {
 	// 	return err.Error()
 	// }
@@ -91,14 +93,14 @@ func check_test_case_dir(testCaseDir string, testCaseNum int) string {
 	// 	return "Test Case Num DO NOT match Test Case Dir's TestCase Files!"
 	// }
 	for i := 1; i <= testCaseNum; i++ {
-		_, err := ioutil.ReadFile(path.Join(testCaseDir, fmt.Sprintf("%d.in", i)))
+		_, err := os.ReadFile(path.Join(testCaseDir, fmt.Sprintf("%d.in", i)))
 		if err != nil {
 			return fmt.Sprintf("Test Case %d need a %d.in !", i, i)
 		}
 		// if string(data) == "" {
 		// 	return fmt.Sprintf("Test Case %d: %d.in is empty !", i, i)
 		// }
-		_, err = ioutil.ReadFile(path.Join(testCaseDir, fmt.Sprintf("%d.ans", i)))
+		_, err = os.ReadFile(path.Join(testCaseDir, fmt.Sprintf("%d.ans", i)))
 		if err != nil {
 			return fmt.Sprintf("Test Case %d need a %d.ans !", i, i)
 		}
@@ -139,20 +141,20 @@ func LaunchTest(cfg TestConfig) TestResult {
 	testCaseDir, _ := filepath.Abs(cfg.QuestionDir)
 	programDir := cfg.ProgramDir
 	// check config
-	check_cfg_msg := check_cfg(cfg)
-	if check_cfg_msg != "" {
-		result.ExtraResult = check_cfg_msg
+	checkCfgMsg := checkConfig(cfg)
+	if checkCfgMsg != "" {
+		result.ExtraResult = checkCfgMsg
 		return result
 	}
 	logging.Info("Launch Test ID: ", cfg.TestID)
 	// check testcase
-	check_testcase_msg := check_test_case_dir(testCaseDir, int(cfg.TestCaseNum))
-	if check_testcase_msg != "" {
-		result.ExtraResult = check_testcase_msg
+	checkTestcaseMsg := checkTestCaseDir(testCaseDir, int(cfg.TestCaseNum))
+	if checkTestcaseMsg != "" {
+		result.ExtraResult = checkTestcaseMsg
 		return result
 	}
 	// create temp directory
-	tempDirName, err := ioutil.TempDir("", "*")
+	tempDirName, err := os.MkdirTemp("", "unilab-oj-*")
 	logging.Info("create temp directory: ", tempDirName)
 	if err != nil {
 		result.ExtraResult = err.Error()
@@ -171,7 +173,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 		return result
 	}
 	// compile
-	files, err := ioutil.ReadDir(tempDirName)
+	files, err := os.ReadDir(tempDirName)
 	if err != nil {
 		result.ExtraResult = err.Error()
 		return result
@@ -186,9 +188,11 @@ func LaunchTest(cfg TestConfig) TestResult {
 	}
 	// switch languages
 	var compileCmd, runType, exeName, runtimeRlimits, compileRlimits string
-	var timeOut int = 0
+	var timeOut int
 	if langConf, ok := JudgerConfig[cfg.Language]; ok {
 		compileCmd = langConf.Compile
+		compileCmd = strings.ReplaceAll(compileCmd, "{SourceFile}", path.Join(tempDirName, langConf.SourceFile))
+		compileCmd = strings.ReplaceAll(compileCmd, "{Executable}", path.Join(tempDirName, langConf.Executable))
 		runType = langConf.RunType
 		exeName = langConf.Executable
 		runtimeRlimits = langConf.RuntimeLimits
@@ -216,18 +220,80 @@ func LaunchTest(cfg TestConfig) TestResult {
 		return result
 	}
 	result.CompileResult = response.StdOut
+
+	// sandbox check compile process
+	// response := utils.Subprocess(
+	// 	compileRlimits, 10, BackendRootDir+"prebuilt/uoj_run", tempDirName, // compile in temp dir
+	// 	fmt.Sprintf("--tl=%d", 10*1000),       // Set cpu time limit (in ms)
+	// 	fmt.Sprintf("--rtl=%d", 10*1000+1000), // Set real time limit (in ms)
+	// 	fmt.Sprintf("--ml=%d", 512*1024),      // Set memory limit (in kb)
+	// 	fmt.Sprintf("--ol=%d", (64*1024)),     // Set output limit (in kb)
+	// 	fmt.Sprintf("--sl=%d", (64*1024)),     // Set stack limit (in kb)
+	// 	fmt.Sprintf("--work-path=%s", tempDirName),
+	// 	fmt.Sprintf("--res=%s", path.Join(tempDirName, "run_compile_res.txt")),
+	// 	"--type=compiler",
+	// 	"--in=/dev/null",
+	// 	fmt.Sprintf("--out=%s", path.Join(tempDirName, "compile_stdout.txt")),
+	// 	fmt.Sprintf("--err=%s", path.Join(tempDirName, "compile_res.txt")), // compiler stderr
+	// 	"--show-trace-details",                                             // ONLY FOR DEBUG
+	// 	compileCmd,
+	// )
+	// logging.Info("Compiler Response: ", response)
+	// result.CompileResult = ""
+	// // read compile result file
+	// compileRes, _ := os.ReadFile(path.Join(tempDirName, "run_compile_res.txt"))
+	// logging.Info("Run result: ", string(compileRes))
+	// compileResArr := strings.Fields(string(compileRes))
+	// if len(compileResArr) != 4 {
+	// 	result.CompileResult = "Compile Failed."
+	// 	return result
+	// }
+	// compileStatus, _ := strconv.ParseUint(compileResArr[0], 10, 32)
+	// compileExitCode, _ := strconv.ParseUint(compileResArr[3], 10, 32)
+	// read compiler output
+	// compileStdErr, _ := os.ReadFile(path.Join(tempDirName, "compile_res.txt"))
+	// compileStdOut, _ := os.ReadFile(path.Join(tempDirName, "compile_stdout.txt"))
+	// logging.Info("compiler stdout: ", string(compileStdOut))
+	// logging.Info("compiler stderr: ", string(compileStdErr))
+
+	// if compileStatus != 0 || compileExitCode != 0 {
+	// 	if compileStatus == 0 {
+	// 		// read compiler err output
+	// 		compilerOutput, err := os.ReadFile(path.Join(tempDirName, "compile_res.txt"))
+	// 		if err != nil {
+	// 			logging.Info(err.Error())
+	// 		} else {
+	// 			logging.Info("ExitCode != 0, compiler output: ", string(compilerOutput))
+	// 		}
+	// 		result.CompileResult = string(compilerOutput)
+	// 		if cfg.Language == "js" {
+	// 			result.CompileResult = trimJSCompileOutputs(result.CompileResult)
+	// 		}
+	// 	} else if compileStatus == 7 {
+	// 		result.CompileResult = "Compile Failed."
+	// 		compilerOutput, err := os.ReadFile(path.Join(tempDirName, "compile_res.txt"))
+	// 		if err != nil {
+	// 			logging.Info(err.Error())
+	// 		} else {
+	// 			logging.Info("JGF! compiler output: ", string(compilerOutput))
+	// 		}
+	// 	} else {
+	// 		result.CompileResult = fmt.Sprintf("Compiler Runstatus: %d", compileStatus)
+	// 	}
+	// 	return result
+	// }
+
 	// run testcase
 	for i := 1; i <= int(cfg.TestCaseNum); i++ {
 		response = utils.Subprocess(
-			runtimeRlimits, timeOut, "./prebuilt/uoj_run", "", // NOTE: work in current dir, not in tmp dir
+			runtimeRlimits, timeOut, BackendRootDir+"prebuilt/uoj_run", tempDirName, // NOTE: work in current dir, not in tmp dir
 			fmt.Sprintf("--tl=%d", cfg.TimeLimit),
 			fmt.Sprintf("--rtl=%d", cfg.TimeLimit+1000),
 			fmt.Sprintf("--ml=%d", cfg.MemoryLimit),
 			fmt.Sprintf("--ol=%d", (64*1024)),
 			fmt.Sprintf("--sl=%d", (64*1024)),
-			"--work-path=.",
-			fmt.Sprintf("--res=%s", path.Join(tempDirName, "run_res.txt")),
-			fmt.Sprintf("--err=%s", "/dev/stdout"),
+			fmt.Sprintf("--work-path=%s", tempDirName),                     // Set the work path of the program
+			fmt.Sprintf("--res=%s", path.Join(tempDirName, "run_res.txt")), // Set the file name for outputing the sandbox result
 			fmt.Sprintf("--type=%s", runType),
 			fmt.Sprintf("--in=%s", path.Join(testCaseDir, fmt.Sprintf("%d.in", i))),
 			fmt.Sprintf("--out=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
@@ -237,80 +303,81 @@ func LaunchTest(cfg TestConfig) TestResult {
 		)
 		logging.Info("Testcase ", i, " Response: ", response)
 		// fill-in results
-		var test_case_result TestCaseResult
-		run_res, _ := ioutil.ReadFile(path.Join(tempDirName, "run_res.txt"))
-		logging.Info("Run result: ", string(run_res))
-		run_res_arr := strings.Fields(string(run_res))
-		var success bool = true
-		test_case_result.Accepted = false
-		test_case_result.CheckerOutput = ""
-		if len(run_res_arr) == 0 {
+		var testCaseResult TestCaseResult
+		runRes, _ := os.ReadFile(path.Join(tempDirName, "run_res.txt"))
+		logging.Info("Run result: ", string(runRes))
+		runResArr := strings.Fields(string(runRes))
+		var success bool
+		testCaseResult.Accepted = false
+		testCaseResult.CheckerOutput = ""
+		if len(runResArr) != 4 {
 			logging.Info("No Output in file run_res.txt")
-			test_case_result.RunStatus = 7
-			test_case_result.TimeElasped = 0
-			test_case_result.MemoryUsage = 0
-			test_case_result.ExitCode = 1
+			testCaseResult.RunStatus = 7
+			testCaseResult.TimeElapsed = 0
+			testCaseResult.MemoryUsage = 0
+			testCaseResult.ExitCode = 1
 			success = false
 		} else {
-			run_status, _ := strconv.ParseUint(run_res_arr[0], 10, 32)
-			time_elasped, _ := strconv.ParseUint(run_res_arr[1], 10, 32)
-			memory_usage, _ := strconv.ParseUint(run_res_arr[2], 10, 32)
-			exit_code, _ := strconv.ParseInt(run_res_arr[3], 10, 32)
-			if exit_code != 0 && run_status == 0 {
-				test_case_result.RunStatus = RuntimeError
-				run_res, _ := ioutil.ReadFile(path.Join(tempDirName, fmt.Sprintf("%d.err", i)))
-				logging.Info("program stderr: ", string(run_res))
-				run_res, _ = ioutil.ReadFile(path.Join(tempDirName, fmt.Sprintf("%d.out", i)))
-				logging.Info("program stdout: ", string(run_res))
+			runStatus, _ := strconv.ParseUint(runResArr[0], 10, 32)
+			timeElapsed, _ := strconv.ParseUint(runResArr[1], 10, 32)
+			memoryUsage, _ := strconv.ParseUint(runResArr[2], 10, 32)
+			exitCode, _ := strconv.ParseInt(runResArr[3], 10, 32)
+			if exitCode != 0 && runStatus == 0 {
+				testCaseResult.RunStatus = RuntimeError
+				runRes, _ := os.ReadFile(path.Join(tempDirName, fmt.Sprintf("%d.err", i)))
+				logging.Info("program stderr: ", string(runRes))
+				runRes, _ = os.ReadFile(path.Join(tempDirName, fmt.Sprintf("%d.out", i)))
+				logging.Info("program stdout: ", string(runRes))
 			} else {
-				test_case_result.RunStatus = uint32(run_status)
+				testCaseResult.RunStatus = uint32(runStatus)
 			}
-			test_case_result.TimeElasped = uint32(time_elasped)
-			test_case_result.MemoryUsage = uint32(memory_usage)
-			test_case_result.ExitCode = int(exit_code)
-			success = (test_case_result.RunStatus == 0)
+			testCaseResult.TimeElapsed = uint32(timeElapsed)
+			testCaseResult.MemoryUsage = uint32(memoryUsage)
+			testCaseResult.ExitCode = int(exitCode)
+			success = (testCaseResult.RunStatus == 0)
 		}
 		// check .ans and .out
 		if success {
 			response = utils.Subprocess(
 				// need `sudo` to run with `CheckerResourceLimiter`
-				"", 10, "./prebuilt/uoj_run", "",
+				"", 10, BackendRootDir+"prebuilt/uoj_run", tempDirName,
 				fmt.Sprintf("--tl=%d", (5*1000)),
 				fmt.Sprintf("--rtl=%d", (10*1000)),
 				fmt.Sprintf("--ml=%d", (512*1024)),
 				fmt.Sprintf("--ol=%d", (64*1024)),
 				fmt.Sprintf("--sl=%d", (64*1024)),
-				"--work-path=.",
+				fmt.Sprintf("--work-path=%s", tempDirName),
 				fmt.Sprintf("--res=%s", path.Join(tempDirName, "spj_run_res.txt")),
 				fmt.Sprintf("--err=%s", "/dev/stdout"),
-				// "--show-trace-details", // ONLY FOR DEBUG
+				"--show-trace-details", // ONLY FOR DEBUG
 				fmt.Sprintf("--add-readable=%s", path.Join(testCaseDir, fmt.Sprintf("%d.in", i))),
 				fmt.Sprintf("--add-readable=%s", path.Join(tempDirName, fmt.Sprintf("%d.out", i))),
 				fmt.Sprintf("--add-readable=%s", path.Join(testCaseDir, fmt.Sprintf("%d.ans", i))),
-				"./prebuilt/fcmp",
+				fmt.Sprintf("--add-readable=%s", BackendRootDir+"prebuilt/fcmp"),
+				BackendRootDir+"prebuilt/fcmp",
 				path.Join(testCaseDir, fmt.Sprintf("%d.in", i)),
 				path.Join(tempDirName, fmt.Sprintf("%d.out", i)),
 				path.Join(testCaseDir, fmt.Sprintf("%d.ans", i)),
 			)
 			if response.ExitCode != 0 || len(response.StdOut) < 2 {
-				test_case_result.CheckerStatus = 7
+				testCaseResult.CheckerStatus = 7
 			} else {
-				spj_run_res, _ := ioutil.ReadFile(path.Join(tempDirName, "spj_run_res.txt"))
-				logging.Info("Judger Run result: ", string(spj_run_res))
-				spj_run_res_arr := strings.Fields(string(spj_run_res))
-				if len(spj_run_res_arr) == 0 {
+				spjRunRes, _ := os.ReadFile(path.Join(tempDirName, "spj_run_res.txt"))
+				logging.Info("Judger Run result: ", string(spjRunRes))
+				spjRunResArr := strings.Fields(string(spjRunRes))
+				if len(spjRunResArr) != 4 {
 					logging.Info("No Output in file spj_run_res.txt")
-					test_case_result.CheckerStatus = 7
+					testCaseResult.CheckerStatus = 7
 				} else {
-					checker_status, _ := strconv.ParseUint(spj_run_res_arr[0], 10, 32)
-					test_case_result.CheckerStatus = uint32(checker_status)
+					checkerStatus, _ := strconv.ParseUint(spjRunResArr[0], 10, 32)
+					testCaseResult.CheckerStatus = uint32(checkerStatus)
 					// parse checker output
-					test_case_result.Accepted = (response.StdOut[:2] == "ok")
-					test_case_result.CheckerOutput = response.StdOut
+					testCaseResult.Accepted = (response.StdOut[:2] == "ok")
+					testCaseResult.CheckerOutput = response.StdOut
 				}
 			}
 		}
-		result.RunResults = append(result.RunResults, test_case_result)
+		result.RunResults = append(result.RunResults, testCaseResult)
 	}
 	return result
 }

@@ -79,7 +79,7 @@ func CreateAssignment(form CreateAssignmentInfo) (uint32, error) {
 		return 0, err
 	}
 	// create question & assignment relation
-	var insertAssignmentQuestions string = "INSERT INTO oj_question_homework (question_id, homework_id) VALUES "
+	var insertAssignmentQuestions = "INSERT INTO oj_question_homework (question_id, homework_id) VALUES "
 	for index, questionID := range form.QuestionIDs {
 		if index < len(form.QuestionIDs)-1 {
 			insertAssignmentQuestions += fmt.Sprintf("(%d, %d),", questionID, assignmentID)
@@ -99,10 +99,10 @@ func CreateAssignment(form CreateAssignmentInfo) (uint32, error) {
 	return uint32(assignmentID), nil
 }
 
-func GetAssignemntInfo(CourseID uint32, UserID uint32) ([]Assignment, error) {
+func GetAssignemntInfo(courseID uint32, userID uint32) ([]Assignment, error) {
 	// read assignments
 	// AND unix_timestamp(homework_begin_time) <= unix_timestamp(NOW()) AND unix_timestamp(homework_due_time) >= unix_timestamp(NOW())
-	res, err := db.Query(`SELECT homework_id, homework_name, homework_begin_time, homework_due_time, homework_description FROM oj_homework WHERE course_id=? AND unix_timestamp(homework_begin_time) <= unix_timestamp(NOW());`, CourseID)
+	res, err := db.Query(`SELECT homework_id, homework_name, homework_begin_time, homework_due_time, homework_description FROM oj_homework WHERE course_id=? AND unix_timestamp(homework_begin_time) <= unix_timestamp(NOW());`, courseID)
 	if err != nil {
 		logging.Info(err)
 		return nil, err
@@ -149,37 +149,35 @@ func GetAssignemntInfo(CourseID uint32, UserID uint32) ([]Assignment, error) {
 		}
 	}
 	// read question test-run infos to get current score
-	// test_run_infos := []TestRunInfo{}
 	for idxx, assignment := range info {
 		for idxy, question := range assignment.Questions {
-			test_run_info := TestRunInfo{}
-			test_run_info.QuestionID = question.ID
-			test_run_info.TestID = 0
-			res, err := db.Query("SELECT test_id, test_launch_time FROM oj_test_run WHERE course_id=? AND question_id=? AND user_id=? AND unix_timestamp(test_launch_time) <= unix_timestamp(?) ORDER BY test_launch_time desc;", CourseID, question.ID, UserID, assignment.DueTime)
+			testRunInfo := TestRunInfo{}
+			testRunInfo.QuestionID = question.ID
+			testRunInfo.TestID = 0
+			res, err := db.Query("SELECT test_id, test_launch_time FROM oj_test_run WHERE course_id=? AND question_id=? AND user_id=? AND unix_timestamp(test_launch_time) <= unix_timestamp(?) ORDER BY test_id desc;", courseID, question.ID, userID, assignment.DueTime)
 			if err != nil {
 				logging.Info(err)
 				return nil, err
 			}
 			defer res.Close()
 			for res.Next() {
-				err = res.Scan(&test_run_info.TestID, &test_run_info.LaunchTime)
+				err = res.Scan(&testRunInfo.TestID, &testRunInfo.LaunchTime)
 				if err != nil {
 					logging.Info(err)
 					return nil, err
 				}
 				break
-				//test_run_infos = append(test_run_infos, test_run_info)
 			}
 			// get latest test cases run result
-			if test_run_info.TestID <= 0 {
+			if testRunInfo.TestID <= 0 {
 				info[idxx].Questions[idxy].Score = 0
 			} else {
-				res, err = db.Query("SELECT testcase_run_state FROM oj_testcase_run WHERE test_id=?;", test_run_info.TestID)
+				res, err = db.Query("SELECT testcase_run_state FROM oj_testcase_run WHERE test_id=?;", testRunInfo.TestID)
 				if err != nil {
 					logging.Info(err)
 					return nil, err
 				}
-				var ac_count uint32 = 0
+				var acCount uint32
 				for res.Next() {
 					var state string
 					err = res.Scan(&state)
@@ -188,10 +186,10 @@ func GetAssignemntInfo(CourseID uint32, UserID uint32) ([]Assignment, error) {
 						return nil, err
 					}
 					if state == "Accepted" {
-						ac_count += 1
+						acCount++
 					}
 				}
-				info[idxx].Questions[idxy].Score = (ac_count * info[idxx].Questions[idxy].TotalScore) / info[idxx].Questions[idxy].TestCaseNum
+				info[idxx].Questions[idxy].Score = (acCount * info[idxx].Questions[idxy].TotalScore) / info[idxx].Questions[idxy].TestCaseNum
 			}
 		}
 	}

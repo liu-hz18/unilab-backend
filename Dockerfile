@@ -20,8 +20,8 @@ ADD . /unilab-backend
 # 因为已经是在 /app下了，所以使用  ./
 RUN mkdir -p ./prebuilt
 RUN go build -ldflags="-s -w" -v -o main .
-RUN g++ ./third_party/unilab_uoj_sandbox/run_program.cpp -o ./prebuilt/uoj_run -O2 -Wall
-RUN g++ ./third_party/testlib/fcmp.cpp -o ./prebuilt/fcmp -O2 -Wall
+RUN g++ ./third_party/vfk_uoj_sandbox/run_program.cpp -o ./prebuilt/uoj_run -O2 -Wfatal-errors -Wall -Wextra
+RUN g++ ./third_party/testlib/fcmp.cpp -o ./prebuilt/fcmp -O2 -Wfatal-errors -Wall -Wextra
 RUN DEBIAN_FRONTEND=noninteractive apt-get remove -y git tzdata build-essential
 
 
@@ -118,12 +118,15 @@ RUN apt-get autoremove
 
 # 创建文件夹
 RUN mkdir -p /unilab-backend
+RUN ls /home -al
 
 WORKDIR /unilab-backend
 COPY --from=builder /unilab-backend/main /unilab-backend/main
 COPY --from=builder /unilab-backend/prebuilt /unilab-backend/prebuilt
 COPY --from=builder /unilab-backend/conf.ini /unilab-backend/conf.ini
 RUN chmod +x /unilab-backend/main
+RUN chmod +x /unilab-backend/prebuilt/uoj_run
+RUN chmod +x /unilab-backend/prebuilt/fcmp
 
 # 设置容器的启动命令，CMD是设置容器的启动指令
 ENTRYPOINT [ "./main" ]

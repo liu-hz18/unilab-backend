@@ -54,7 +54,7 @@ func DirDiff(prevDir, nowDir string) DiffResult {
 		}
 		result.InsertLines += insert
 		result.DeleteLines += delete
-		result.FileChanged += 1
+		result.FileChanged++
 	}
 	return result
 }

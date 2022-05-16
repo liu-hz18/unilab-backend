@@ -23,7 +23,7 @@ golangci-lint:
   script:
     - $(go env GOPATH)/bin/golangci-lint run -v -E gofmt -E revive -E gocyclo -E misspell -E cyclop -E gocritic ./...
 
-compile:
+compile-server:
   tags:
     - unilab-backend-runner
   stage: build
@@ -33,3 +33,11 @@ compile:
   artifacts:
     paths:
       - $OUTPUT_NAME
+
+compile-sandbox:
+  tags:
+    - unilab-backend-runner
+  stage: build
+  script:
+    - g++ ./third_party/vfk_uoj_sandbox/run_program.cpp -o ./prebuilt/uoj_run -O2 -Werror -Wfatal-errors -Wall -Wextra
+    - g++ ./third_party/testlib/fcmp.cpp -o ./prebuilt/fcmp -O2 -Werror -Wfatal-errors -Wall -Wextra

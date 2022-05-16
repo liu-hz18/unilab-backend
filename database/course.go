@@ -52,7 +52,7 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 		return err
 	}
 	// get course id
-	course_id, err := result.LastInsertId()
+	courseID, err := result.LastInsertId()
 	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)
@@ -60,27 +60,27 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 	}
 	// create students if not existed
 	// WARN: teachers are not allowed to add teachers
-	var insertSqlStr string = "INSERT IGNORE INTO oj_user (user_id, user_real_name, user_type) VALUES "
-	for index, user_info := range courseform.Students {
+	var insertSQLStr = "INSERT IGNORE INTO oj_user (user_id, user_real_name, user_type) VALUES "
+	for index, userInfo := range courseform.Students {
 		if index < len(courseform.Students)-1 {
-			insertSqlStr += fmt.Sprintf("(%d, '%s', %d),", user_info.ID, user_info.Name, UserStudent)
+			insertSQLStr += fmt.Sprintf("(%d, '%s', %d),", userInfo.ID, userInfo.Name, UserStudent)
 		} else {
-			insertSqlStr += fmt.Sprintf("(%d, '%s', %d);", user_info.ID, user_info.Name, UserStudent)
+			insertSQLStr += fmt.Sprintf("(%d, '%s', %d);", userInfo.ID, userInfo.Name, UserStudent)
 		}
 	}
-	_, err = tx.Exec(insertSqlStr)
+	_, err = tx.Exec(insertSQLStr)
 	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)
 		return err
 	}
 	// add course <-> user relation
-	var insertCourseTeacher string = "INSERT INTO oj_user_course(course_id, user_id, user_type) VALUES "
+	var insertCourseTeacher = "INSERT INTO oj_user_course(course_id, user_id, user_type) VALUES "
 	for index, teacherID := range courseform.Teachers {
 		if index < len(courseform.Teachers)-1 {
-			insertCourseTeacher += fmt.Sprintf("(%d, %d,'%s'),", course_id, teacherID, "teacher")
+			insertCourseTeacher += fmt.Sprintf("(%d, %d,'%s'),", courseID, teacherID, "teacher")
 		} else {
-			insertCourseTeacher += fmt.Sprintf("(%d, %d,'%s');", course_id, teacherID, "teacher")
+			insertCourseTeacher += fmt.Sprintf("(%d, %d,'%s');", courseID, teacherID, "teacher")
 		}
 	}
 	// logging.Info(insertCourseTeacher)
@@ -90,10 +90,10 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 		logging.Info(err)
 		return err
 	}
-	var insertCourseStudent string = "INSERT INTO oj_user_course(course_id, user_id, user_type) VALUES "
-	var haveStudents bool = false
+	var insertCourseStudent = "INSERT INTO oj_user_course(course_id, user_id, user_type) VALUES "
+	var haveStudents = false
 	for index, student := range courseform.Students {
-		var existInTeacher bool = false
+		var existInTeacher = false
 		for _, teacherID := range courseform.Teachers {
 			if teacherID == student.ID {
 				existInTeacher = true
@@ -104,9 +104,9 @@ func CreateNewCourse(courseform CreateCourseForm) error {
 			continue
 		}
 		if index < len(courseform.Students)-1 {
-			insertCourseStudent += fmt.Sprintf("(%d, %d,'%s'),", course_id, student.ID, "student")
+			insertCourseStudent += fmt.Sprintf("(%d, %d,'%s'),", courseID, student.ID, "student")
 		} else {
-			insertCourseStudent += fmt.Sprintf("(%d, %d,'%s');", course_id, student.ID, "student")
+			insertCourseStudent += fmt.Sprintf("(%d, %d,'%s');", courseID, student.ID, "student")
 			haveStudents = true
 		}
 	}
@@ -154,11 +154,11 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 	}
 	// get courses info
 	courses := []Course{}
-	for _, course_id := range courseIDs {
+	for _, courseID := range courseIDs {
 		var course Course
 		err := db.QueryRow(
 			"SELECT course_id, course_name, course_teacher, course_term, course_type FROM oj_course WHERE course_id=?;",
-			course_id).Scan(
+			courseID).Scan(
 			&course.CourseID,
 			&course.CourseName,
 			&course.CourseTeacher,
@@ -169,13 +169,13 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 			logging.Info(err)
 			return nil, err
 		}
-		totalRow, err := db.Query("SELECT COUNT(*) FROM oj_announcement WHERE course_id=?;", course_id)
+		totalRow, err := db.Query("SELECT COUNT(*) FROM oj_announcement WHERE course_id=?;", courseID)
 		if err != nil {
 			logging.Info(err)
 			return nil, err
 		}
 		defer totalRow.Close()
-		var totalAnno uint32 = 0
+		var totalAnno uint32
 		for totalRow.Next() {
 			err := totalRow.Scan(&totalAnno)
 			if err != nil {
@@ -184,21 +184,21 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 			}
 		}
 		course.CourseAnnounce = totalAnno
-		totalRow, err = db.Query("SELECT homework_due_time FROM oj_homework WHERE course_id=? AND unix_timestamp(homework_begin_time) <= unix_timestamp(NOW()) AND unix_timestamp(NOW()) <= unix_timestamp(homework_due_time) ORDER BY homework_due_time DESC;", course_id)
+		totalRow, err = db.Query("SELECT homework_due_time FROM oj_homework WHERE course_id=? AND unix_timestamp(homework_begin_time) <= unix_timestamp(NOW()) AND unix_timestamp(NOW()) <= unix_timestamp(homework_due_time) ORDER BY homework_due_time DESC;", courseID)
 		if err != nil {
 			logging.Info(err)
 			return nil, err
 		}
 		defer totalRow.Close()
-		var totalAssignment uint32 = 0
-		var nearestDue string = ""
+		var totalAssignment uint32
+		nearestDue := ""
 		for totalRow.Next() {
 			err := totalRow.Scan(&nearestDue)
 			if err != nil {
 				logging.Info(err)
 				continue
 			}
-			totalAssignment += 1
+			totalAssignment++
 		}
 		course.CourseAssignments = totalAssignment
 		course.NearestDue = nearestDue
@@ -209,18 +209,18 @@ func GetUserCourses(userid uint32) ([]Course, error) {
 }
 
 func GetCourseByID(courseID uint32) (string, error) {
-	var course_name string
-	err := db.QueryRow("SELECT course_name from oj_course where course_id=?;", courseID).Scan(&course_name)
+	var courseName string
+	err := db.QueryRow("SELECT course_name from oj_course where course_id=?;", courseID).Scan(&courseName)
 	if err != nil {
 		logging.Info(err)
 		return "", err
 	}
-	return course_name, nil
+	return courseName, nil
 }
 
 func CheckCourseAccessPermission(courseID, userID uint32) bool {
-	var course_id uint32
-	err := db.QueryRow("SELECT course_id FROM oj_user_course WHERE course_id=? AND user_id=?;", courseID, userID).Scan(&course_id)
+	var courseIDDB uint32
+	err := db.QueryRow("SELECT course_id FROM oj_user_course WHERE course_id=? AND user_id=?;", courseID, userID).Scan(&courseIDDB)
 	if err != nil {
 		logging.Info(err)
 		return false

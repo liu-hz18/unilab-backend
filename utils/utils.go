@@ -24,7 +24,7 @@ func StringToInt(str string) (int, error) {
 }
 
 var timeTemplates = []string{
-	"2006-01-02 15:04:05", //常规类型
+	"2006-01-02 15:04:05", // default type
 	"2006/01/02 15:04:05",
 	"2006-01-02",
 	"2006/01/02",

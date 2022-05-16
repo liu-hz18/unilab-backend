@@ -6,7 +6,7 @@ import (
 )
 
 func isAdmin(userid string) bool {
-	userid_int, err := utils.StringToInt(userid)
+	userIDInt, err := utils.StringToInt(userid)
 	if err != nil {
 		logging.Info(err)
 		return false
@@ -14,7 +14,7 @@ func isAdmin(userid string) bool {
 	// TODO: 请在此处添加 admin 学号
 	var adminIDs = []int{2018011446, 2018011302}
 	for _, id := range adminIDs {
-		if id == userid_int {
+		if id == userIDInt {
 			return true
 		}
 	}

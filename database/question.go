@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strconv"
 	"time"
@@ -56,7 +56,7 @@ type QuestionInfo struct {
 	AppendixFile string
 }
 
-func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCaseNum uint32) (uint32, error) {
+func CreateQuestion(questionForm CreateQuestionForm, creatorID uint32, testCaseNum uint32) (uint32, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		if tx != nil {
@@ -72,7 +72,7 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 	`,
 		questionForm.Title,
 		questionForm.Tag,
-		creator_id,
+		creatorID,
 		questionForm.TotalScore,
 		testCaseNum,
 		questionForm.MemoryLimit,
@@ -89,7 +89,7 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 		return 0, err
 	}
 	// get question id
-	question_id, err := result.LastInsertId()
+	questionID, err := result.LastInsertId()
 	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)
@@ -101,7 +101,7 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 		VALUES
 		(?, ?)
 	`,
-		question_id,
+		questionID,
 		questionForm.CourseID,
 	)
 	if err != nil {
@@ -129,12 +129,12 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 		userIDs = append(userIDs, userID)
 	}
 	// create user <-> anno relation
-	var insertUserQuestion string = "INSERT INTO oj_user_question(user_id, question_id) VALUES "
+	var insertUserQuestion = "INSERT INTO oj_user_question(user_id, question_id) VALUES "
 	for idx, userID := range userIDs {
 		if idx < len(userIDs)-1 {
-			insertUserQuestion += fmt.Sprintf("(%d, %d),", userID, question_id)
+			insertUserQuestion += fmt.Sprintf("(%d, %d),", userID, questionID)
 		} else {
-			insertUserQuestion += fmt.Sprintf("(%d, %d);", userID, question_id)
+			insertUserQuestion += fmt.Sprintf("(%d, %d);", userID, questionID)
 		}
 	}
 	_, err = tx.Exec(insertUserQuestion)
@@ -144,8 +144,8 @@ func CreateQuestion(questionForm CreateQuestionForm, creator_id uint32, testCase
 		return 0, err
 	}
 	_ = tx.Commit()
-	logging.Info("CreateQuestion() commit trans action successfully. ID: ", question_id)
-	return uint32(question_id), nil
+	logging.Info("CreateQuestion() commit trans action successfully. ID: ", questionID)
+	return uint32(questionID), nil
 }
 
 func GetQuestionTotalNumByCourseID(courseID uint32) (uint32, error) {
@@ -155,7 +155,7 @@ func GetQuestionTotalNumByCourseID(courseID uint32) (uint32, error) {
 		return 0, err
 	}
 	defer res.Close()
-	var num uint32 = 0
+	var num uint32
 	for res.Next() {
 		err := res.Scan(&num)
 		if err != nil {
@@ -234,7 +234,7 @@ func GetQuestionTitleAndTestCaseNumAndLanguageByID(questionID uint32) (string, u
 func GetQuestionDetailByID(questionID, userID uint32) (QuestionInfo, error) {
 	question := QuestionInfo{}
 	var userid uint32
-	var issue_time time.Time
+	var issueTime time.Time
 	question.ID = 0
 	err := db.QueryRow("SELECT question_name, question_tag, question_creator, question_score, question_testcase_num, question_memory_limit, question_time_limit, question_language, question_test_total_num, question_test_ac_num, issue_time FROM oj_question WHERE question_id=?;", questionID).Scan(
 		&question.Title,
@@ -247,7 +247,7 @@ func GetQuestionDetailByID(questionID, userID uint32) (QuestionInfo, error) {
 		&question.Language,
 		&question.TotalTestNum,
 		&question.TotalACNum,
-		&issue_time,
+		&issueTime,
 	)
 	if err != nil {
 		logging.Info(err)
@@ -259,24 +259,24 @@ func GetQuestionDetailByID(questionID, userID uint32) (QuestionInfo, error) {
 		return question, err
 	}
 	question.Creator = username
-	question.IssueTime = issue_time.Format("2006/01/02 15:04")
+	question.IssueTime = issueTime.Format("2006/01/02 15:04")
 	logging.Info(question)
 	// read description from disk
-	files_dir := setting.QuestionRootDir + strconv.FormatUint(uint64(questionID), 10) + "_" + question.Title + "/"
-	f, err := os.Open(files_dir + "description.md")
+	filesDir := setting.QuestionRootDir + strconv.FormatUint(uint64(questionID), 10) + "_" + question.Title + "/"
+	f, err := os.Open(filesDir + "description.md")
 	if err != nil {
 		logging.Info(err)
 		return question, err
 	}
 	defer f.Close()
-	content, err := ioutil.ReadAll(f)
+	content, err := io.ReadAll(f)
 	if err != nil {
 		logging.Info(err)
 		return question, err
 	}
 	question.Content = string(content)
 	// check appendix
-	if utils.FileExists(files_dir + "appendix.zip") {
+	if utils.FileExists(filesDir + "appendix.zip") {
 		question.AppendixFile = "appendix.zip"
 	} else {
 		question.AppendixFile = ""

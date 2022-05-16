@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"unilab-backend/apis"
 	"unilab-backend/database"
-	"unilab-backend/gitlab_api"
+	"unilab-backend/gitlabapi"
 	"unilab-backend/logging"
 	"unilab-backend/osgrade"
 
@@ -14,21 +14,21 @@ import (
 
 type WebhookInfo struct {
 	Attributes struct {
-		Branch        string `json:"ref"`
-		Status        string `json:"status"`
-		Detail_status string `json:"detailed_status"`
+		Branch       string `json:"ref"`
+		Status       string `json:"status"`
+		DetailStatus string `json:"detailed_status"`
 	} `json:"object_attributes"`
 	UserInfo struct {
 		UserID uint32 `json:"id"`
 	} `json:"user"`
-	Project_info struct {
-		Project_id uint32 `json:"id"`
+	ProjectInfo struct {
+		ProjectID uint32 `json:"id"`
 	} `json:"project"`
 	JobInfos []JobInfo `json:"builds"`
 }
 
 type JobInfo struct {
-	Job_id uint32 `json:"id"`
+	JobID uint32 `json:"id"`
 }
 
 func OsWebhookHandler(c *gin.Context) {
@@ -45,18 +45,21 @@ func OsWebhookHandler(c *gin.Context) {
 		apis.ErrorResponse(c, apis.INVALID_PARAMS, "array webhookInfo.JobInfos is empty!")
 		return
 	}
-	project_id := strconv.Itoa(int(webhookInfo.Project_info.Project_id))
-	job_id := strconv.Itoa(int(webhookInfo.JobInfos[0].Job_id))
+	projectID := strconv.Itoa(int(webhookInfo.ProjectInfo.ProjectID))
+	jobID := strconv.Itoa(int(webhookInfo.JobInfos[0].JobID))
 	accessToken, err := database.GetUserAccessToken("2018011302")
 	if err != nil {
 		apis.ErrorResponse(c, apis.ERROR, err.Error())
 		return
 	}
-	if webhookInfo.Attributes.Detail_status == "passed" || webhookInfo.Attributes.Detail_status == "failed" {
+	if webhookInfo.Attributes.DetailStatus == "passed" || webhookInfo.Attributes.DetailStatus == "failed" {
 		// fmt.Println(trace)
-		trace := gitlab_api.Get_job_trace(project_id, job_id, "2018011302", accessToken)
+		trace := gitlabapi.GetJobTrace(projectID, jobID, "2018011302", accessToken)
 		tests, outputs := osgrade.Grade(trace)
-		database.CreateGradeRecord(webhookInfo.UserInfo.UserID, webhookInfo.Attributes.Branch, tests, outputs, webhookInfo.Attributes.Detail_status)
+		err := database.CreateGradeRecord(webhookInfo.UserInfo.UserID, webhookInfo.Attributes.Branch, tests, outputs, webhookInfo.Attributes.DetailStatus)
+		if err != nil {
+			logging.Error(err.Error())
+		}
 	}
 	// tests,outputs := os.Grade(trace)
 	// if detailed_status=="passed" || detailed_status=="failed"{

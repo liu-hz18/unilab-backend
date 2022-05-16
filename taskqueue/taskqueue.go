@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"unilab-backend/apis"
 	"unilab-backend/database"
+	"unilab-backend/logging"
 	"unilab-backend/setting"
 
 	"github.com/gin-gonic/gin"
@@ -50,11 +51,16 @@ func TaskSubmitHandler(c *gin.Context) {
 	}
 	task.Token = c.Request.Header.Get("Authorization")
 	// fmt.Println(task)
-	taskId, _ := client.Send("os-server", "grade", task)
-	result, _ := client.GetResult(taskId, 2*time.Second, 300*time.Millisecond)
+	taskID, _ := client.Send("os-server", "grade", task)
+	result, _ := client.GetResult(taskID, 2*time.Second, 300*time.Millisecond)
 	var gradeDetails []database.GradeRecord
 	if result.IsSuccess() {
-		result.Get(0, &gradeDetails)
+		err := result.Get(0, &gradeDetails)
+		if err != nil {
+			logging.Error(err.Error())
+			apis.ErrorResponse(c, apis.ERROR, err.Error())
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"gradeDetails": gradeDetails,

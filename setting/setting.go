@@ -18,7 +18,7 @@ var (
 	QuestionRootDir   string
 	RuntimeRootDir    string
 	JudgerPoolSize    int
-	FrontEndBaseUrl   string
+	FrontEndBaseURL   string
 	BackEndBaseURL    string
 
 	// auth
@@ -29,7 +29,7 @@ var (
 	ClientSecret   string
 
 	// server
-	HttpPort     int
+	HTTPPort     int
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	RateLimit    int
@@ -67,7 +67,7 @@ func init() {
 	QuestionRootDir = UploadFileRootDir + sec.Key("QUESTION_SUB_DIR").MustString("question/")
 	RuntimeRootDir = sec.Key("RUNTIME_ROOT_DIR").MustString("runtime/")
 	JudgerPoolSize = sec.Key("JUDGER_POOL_SIZE").MustInt(2048)
-	FrontEndBaseUrl = sec.Key("FRONTEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn")
+	FrontEndBaseURL = sec.Key("FRONTEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn")
 	BackEndBaseURL = sec.Key("BACKEND_BASE_URL").MustString("https://lab.cs.tsinghua.edu.cn/api")
 
 	sec, err = Cfg.GetSection("auth")
@@ -84,7 +84,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("Fail to get section 'server' in 'conf.ini': %v", err)
 	}
-	HttpPort = sec.Key("HTTP_PORT").MustInt(1323)
+	HTTPPort = sec.Key("HTTP_PORT").MustInt(1323)
 	ReadTimeout = time.Duration(sec.Key("READ_TIMEOUT").MustInt(60)) * time.Second
 	WriteTimeout = time.Duration(sec.Key("WRITE_TIMEOUT").MustInt(60)) * time.Second
 	RateLimit = sec.Key("RATE_LIMIT").MustInt(2)

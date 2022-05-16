@@ -33,6 +33,7 @@ string basename(const string &path) {
 		return path.substr(p + 1);
 	}
 }
+
 string dirname(const string &path) {
 	size_t p = path.rfind('/');
 	if (p == string::npos) {
@@ -41,6 +42,7 @@ string dirname(const string &path) {
 		return path.substr(0, p);
 	}
 }
+
 string getcwdp(pid_t pid) {
 	char s[22];
 	char cwd[MaxPathLen + 1];
@@ -56,6 +58,7 @@ string getcwdp(pid_t pid) {
 	cwd[l] = '\0';
 	return cwd;
 }
+
 string abspath(pid_t pid, const string &path) {
 	if (path.size() > MaxPathLen) {
 		return "";
@@ -118,6 +121,7 @@ string abspath(pid_t pid, const string &path) {
 	}
 	return s;
 }
+
 string realpath(const string &path) {
 	char real[PATH_MAX + 1] = {};
 	if (realpath(path.c_str(), real) == NULL) {
@@ -792,6 +796,28 @@ void init_conf(const RunProgramConfig &config) {
 		syscall_max_cnt[__NR_uname          ] = -1; // for javac = =
 		syscall_max_cnt[__NR_sysinfo        ] = -1; // for javac = =
 
+		// for unilab go
+		syscall_max_cnt[__NR_pipe2          ] = -1;
+		syscall_max_cnt[__NR_epoll_create1  ] = -1;
+		syscall_max_cnt[__NR_epoll_ctl      ] = -1;
+		syscall_max_cnt[__NR_epoll_wait     ] = -1;
+		syscall_max_cnt[__NR_epoll_pwait    ] = -1;
+		syscall_max_cnt[__NR_tgkill         ] = -1;
+		syscall_max_cnt[__NR_waitid         ] = -1;  
+		syscall_max_cnt[__NR_utimensat      ] = -1;
+		syscall_max_cnt[__NR_fallocate      ] = -1;
+		syscall_max_cnt[__NR_mkdirat        ] = -1;
+		syscall_max_cnt[__NR_fchmodat       ] = -1;
+		syscall_max_cnt[__NR_renameat       ] = -1;
+		syscall_max_cnt[__NR_flock          ] = -1;
+		syscall_max_cnt[__NR_pwrite64       ] = -1;
+		// for unilab rust
+		syscall_max_cnt[__NR_poll           ] = -1;
+		syscall_max_cnt[__NR_statx          ] = -1;
+		syscall_max_cnt[__NR_fdatasync      ] = -1;
+		// for unilab java
+		syscall_max_cnt[__NR_clock_nanosleep] = -1;
+
 		# ifdef UOJ_JUDGER_BASESYSTEM_UBUNTU1804
 		syscall_max_cnt[__NR_prlimit64      ] = -1;
 		syscall_max_cnt[__NR_getrandom      ] = -1;
@@ -825,8 +851,6 @@ void init_conf(const RunProgramConfig &config) {
 		readable_file_name_set.insert("/lib64/");
 		readable_file_name_set.insert("/bin/");
 		readable_file_name_set.insert("/sbin/");
-		// readable_file_name_set.insert("/proc/meminfo");
-		// readable_file_name_set.insert("/proc/self/");
 
 		readable_file_name_set.insert("/sys/devices/system/cpu/");
 		readable_file_name_set.insert("/proc/");
@@ -834,13 +858,8 @@ void init_conf(const RunProgramConfig &config) {
 		soft_ban_file_name_set.insert("/etc/passwd"); // for javac = =
 
 		readable_file_name_set.insert("/etc/timezone");
-		# ifndef UOJ_JUDGER_FPC_VERSION
-		readable_file_name_set.insert("/etc/fpc-2.6.2.cfg.d/");
-		# endif
-		# ifdef UOJ_JUDGER_FPC_VERSION
-		readable_file_name_set.insert("/etc/fpc-" UOJ_JUDGER_FPC_VERSION ".cfg.d/");
-		# endif
-		readable_file_name_set.insert("/etc/fpc.cfg");
+		// for unilab
+		readable_file_name_set.insert("/sys/kernel/mm/transparent_hugepage/hpage_pmd_size");
 
 		statable_file_name_set.insert("/*");
 	}
@@ -850,7 +869,7 @@ string read_string_from_regs(reg_val_t addr, pid_t pid) {
 	char res[MaxPathLen + 1], *ptr = res;
 	while (ptr != res + MaxPathLen) {
 		*(reg_val_t*)ptr = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
-		for (int i = 0; i < sizeof(reg_val_t); i++, ptr++, addr++) {
+		for (int i = 0; i < int(sizeof(reg_val_t)); i++, ptr++, addr++) {
 			if (*ptr == 0) {
 				return res;
 			}
@@ -859,6 +878,7 @@ string read_string_from_regs(reg_val_t addr, pid_t pid) {
 	res[MaxPathLen] = 0;
 	return res;
 }
+
 string read_abspath_from_regs(reg_val_t addr, pid_t pid) {
 	return abspath(pid, read_string_from_regs(addr, pid));
 }
@@ -926,7 +946,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 			if (realpath(fn) != "" && !is_readable_file(fn)) {
 				bool ok = on_dgs_file_detect(pid, reg, fn);
 				if (!ok && need_show_trace_details) {
-					fprintf(stderr, "open  ");
+					fprintf(stderr, "FAIL open  ");
 					switch (flags & O_ACCMODE) {
 					case O_RDONLY:
 						fprintf(stderr, "r ");
@@ -949,7 +969,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 			if (!is_writable_file(fn)) {
 				bool ok = on_dgs_file_detect(pid, reg, fn);
 				if (!ok && need_show_trace_details) {
-					fprintf(stderr, "open  ");
+					fprintf(stderr, "FAIL open  ");
 					switch (flags & O_ACCMODE) {
 					case O_RDONLY:
 						fprintf(stderr, "r ");
@@ -978,7 +998,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		if (!is_statable_file(fn)) {
 			bool ok = on_dgs_file_detect(pid, reg, fn);
 			if (!ok && need_show_trace_details) {
-				fprintf(stderr, "newfstatat %s\n", fn.c_str());
+				fprintf(stderr, "FAIL newfstatat %s\n", fn.c_str());
 			}
 			return ok;
 		}
@@ -996,7 +1016,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		if (!is_readable_file(fn)) {
 			bool ok = on_dgs_file_detect(pid, reg, fn);
 			if (!ok && need_show_trace_details) {
-				fprintf(stderr, "readlink   %s\n", fn.c_str());
+				fprintf(stderr, "FAIL readlink   %s\n", fn.c_str());
 			}
 			return ok;
 		}
@@ -1014,7 +1034,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		if (!is_writable_file(fn)) {
 			bool ok = on_dgs_file_detect(pid, reg, fn);
 			if (!ok && need_show_trace_details) {
-				fprintf(stderr, "unlink     %s\n", fn.c_str());
+				fprintf(stderr, "FAIL unlink     %s\n", fn.c_str());
 			}
 			return ok;
 		}
@@ -1027,7 +1047,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		if (!is_statable_file(fn)) {
 			bool ok = on_dgs_file_detect(pid, reg, fn);
 			if (!ok && need_show_trace_details) {
-				fprintf(stderr, "access     %s\n", fn.c_str());
+				fprintf(stderr, "FAIL access     %s\n", fn.c_str());
 			}
 			return ok;
 		}
@@ -1040,7 +1060,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		if (!is_statable_file(fn)) {
 			bool ok = on_dgs_file_detect(pid, reg, fn);
 			if (!ok && need_show_trace_details) {
-				fprintf(stderr, "stat       %s\n", fn.c_str());
+				fprintf(stderr, "FAIL stat       %s\n", fn.c_str());
 			}
 			return ok;
 		}
@@ -1053,7 +1073,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		if (!is_readable_file(fn)) {
 			bool ok = on_dgs_file_detect(pid, reg, fn);
 			if (!ok && need_show_trace_details) {
-				fprintf(stderr, "execve     %s\n", fn.c_str());
+				fprintf(stderr, "FAIL execve     %s\n", fn.c_str());
 			}
 			return ok;
 		}
@@ -1066,7 +1086,7 @@ inline bool check_safe_syscall(pid_t pid, bool need_show_trace_details) {
 		if (!is_writable_file(fn)) {
 			bool ok = on_dgs_file_detect(pid, reg, fn);
 			if (!ok && need_show_trace_details) {
-				fprintf(stderr, "change     %s\n", fn.c_str());
+				fprintf(stderr, "FAIL change     %s\n", fn.c_str());
 			}
 			return ok;
 		}

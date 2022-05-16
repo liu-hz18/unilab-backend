@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -22,7 +22,7 @@ type SubmitCodeForm struct {
 	Language   string `json:"language" form:"language" uri:"language" binding:"required"`
 }
 
-func CreateSubmitRecord(form SubmitCodeForm, userid uint32, testcase_num uint32) (uint32, error) {
+func CreateSubmitRecord(form SubmitCodeForm, userid uint32, testcaseNum uint32) (uint32, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		if tx != nil {
@@ -54,12 +54,12 @@ func CreateSubmitRecord(form SubmitCodeForm, userid uint32, testcase_num uint32)
 		return 0, err
 	}
 	// insert into test-run table
-	var insertTestCaseSql = "INSERT INTO oj_testcase_run (testcase_rank, test_id) VALUES "
-	for i := 0; i < int(testcase_num)-1; i++ {
-		insertTestCaseSql += fmt.Sprintf("(%d, %d),", i, testID)
+	var insertTestCaseSQL = "INSERT INTO oj_testcase_run (testcase_rank, test_id) VALUES "
+	for i := 0; i < int(testcaseNum)-1; i++ {
+		insertTestCaseSQL += fmt.Sprintf("(%d, %d),", i, testID)
 	}
-	insertTestCaseSql += fmt.Sprintf("(%d, %d);", testcase_num-1, testID)
-	_, err = tx.Exec(insertTestCaseSql)
+	insertTestCaseSQL += fmt.Sprintf("(%d, %d);", testcaseNum-1, testID)
+	_, err = tx.Exec(insertTestCaseSQL)
 	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)
@@ -121,7 +121,7 @@ func GetQuestionSubmitCounts(questionID, userID uint32) (uint32, error) {
 		return 0, err
 	}
 	defer totalRow.Close()
-	var total uint32 = 0
+	var total uint32
 	for totalRow.Next() {
 		err := totalRow.Scan(&total)
 		if err != nil {
@@ -133,7 +133,8 @@ func GetQuestionSubmitCounts(questionID, userID uint32) (uint32, error) {
 }
 
 func GetUserSubmitTestIDs(courseID, userID, limit, offset uint32) ([]uint32, error) {
-	rows, err := db.Query("SELECT test_id FROM oj_test_run WHERE user_id=? AND course_id=? ORDER BY test_launch_time desc LIMIT ? OFFSET ?;", userID, courseID, limit, offset)
+	// test_id is created increasingly by time, so we sort by test_id is equal to sort by test_launch_time
+	rows, err := db.Query("SELECT test_id FROM oj_test_run WHERE user_id=? AND course_id=? ORDER BY test_id desc LIMIT ? OFFSET ?;", userID, courseID, limit, offset)
 	if err != nil {
 		logging.Info(err)
 		return nil, err
@@ -159,7 +160,7 @@ func GetUserSubmitsTestCount(courseID, userID uint32) (uint32, error) {
 		return 0, err
 	}
 	defer totalRow.Close()
-	var total uint32 = 0
+	var total uint32
 	for totalRow.Next() {
 		err := totalRow.Scan(&total)
 		if err != nil {
@@ -224,6 +225,9 @@ func GetTestDetailsByIDs(testIDs []uint32) []TestDetail {
 			logging.Info(err)
 			continue
 		}
+		now := time.Now()
+		uploadTimes := now.Sub(testDetail.SubmitTime)
+		haveOverTime := (uploadTimes >= 4*time.Minute)
 		testDetail.FileSize = fmt.Sprintf("%d B", fileSize)
 		// read question details
 		var testCaseNum uint32
@@ -245,7 +249,7 @@ func GetTestDetailsByIDs(testIDs []uint32) []TestDetail {
 			continue
 		}
 		defer rows.Close()
-		var validCaseCount uint32 = 0
+		var validCaseCount uint32
 		for rows.Next() {
 			var testcaseDetail TestCaseDetail
 			err := rows.Scan(&testcaseDetail.ID, &testcaseDetail.State, &testcaseDetail.TimeElasped, &testcaseDetail.MemoryUsage)
@@ -253,12 +257,38 @@ func GetTestDetailsByIDs(testIDs []uint32) []TestDetail {
 				logging.Info(err)
 				continue
 			}
-			validCaseCount += 1
+			validCaseCount++
 			testDetail.TestCases = append(testDetail.TestCases, testcaseDetail)
 		}
 		if validCaseCount != testCaseNum {
 			logging.Info("ERROR: test case num DISMATCH between `oj_question` AND `oj_testcase_run`")
 			continue
+		}
+		// over time tests should mark JudgeFailed
+		if haveOverTime {
+			for index, testcaseDetail := range testDetail.TestCases {
+				if testcaseDetail.State == "Pending" {
+					// update in database
+					_, err = db.Exec(`
+						UPDATE oj_testcase_run SET 
+						testcase_run_state=?,
+						testcase_run_time_elapsed=?,
+						testcase_run_memory_usage=?
+						WHERE
+						test_id=? AND testcase_rank=?;
+					`,
+						judger.RunResultMap[judger.JudgeFailed],
+						0,
+						0,
+						testDetail.ID,
+						index,
+					)
+					if err != nil {
+						logging.Info(err)
+						continue
+					}
+				}
+			}
 		}
 		testDetails = append(testDetails, testDetail)
 	}
@@ -274,23 +304,23 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.S
 		logging.Info("UpdateTestCaseRunResults() begin trans action failed: ", err)
 	}
 	var code uint32
-	var is_ac bool = true
-	var passCount uint32 = 0
+	var passCount uint32
+	isAc := true
 	if len(judgerResult.RunResults) == int(judgerResult.CaseNum) {
 		for rank, runResults := range judgerResult.RunResults {
 			if runResults.RunStatus == judger.RunFinished {
 				if runResults.Accepted {
 					code = judger.RunFinished
-					passCount += 1
+					passCount++
 				} else {
 					code = judger.WrongAnswer
-					is_ac = false
+					isAc = false
 				}
 			} else {
 				code = runResults.RunStatus
-				is_ac = false
+				isAc = false
 			}
-			// logging.Info("t: ", runResults.TimeElasped, "m: ", runResults.MemoryUsage)
+			// logging.Info("t: ", runResults.TimeElapsed, "m: ", runResults.MemoryUsage)
 			_, err = tx.Exec(`
 				UPDATE oj_testcase_run SET 
 				testcase_run_state=?,
@@ -301,7 +331,7 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.S
 				test_id=? AND testcase_rank=?;
 			`,
 				judger.RunResultMap[code],
-				runResults.TimeElasped,
+				runResults.TimeElapsed,
 				runResults.MemoryUsage,
 				strings.Trim(runResults.CheckerOutput, " \t\n"),
 				judgerResult.TestID,
@@ -314,7 +344,7 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.S
 			}
 		}
 	} else {
-		is_ac = false
+		isAc = false
 		if judgerResult.CompileResult == "" {
 			code = judger.JudgeFailed
 		} else {
@@ -379,14 +409,55 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.S
 	)
 	logging.Info("extra result:", judgerResult.ExtraResult)
 	if err != nil {
-		_ = tx.Rollback()
 		logging.Info(err)
-		return
+		if strings.Contains(err.Error(), "Error 3988:") || strings.Contains(err.Error(), "Error 1366:") {
+			_, err = tx.Exec(`
+				UPDATE oj_test_run SET
+				compile_result=?,
+				extra_result=?,
+				score=?,
+				pass_num=?,
+				save_dir=?,
+
+				file_size=?,
+				file_num=?,
+				file_lines=?,
+				
+				diff_file=?,
+				diff_insert=?,
+				diff_delete=?
+				WHERE
+				test_id=?;
+			`,
+				"", // compile_result
+				"", // extra_result
+				finalScore,
+				passCount,
+				judgerResult.ProgramDir,
+
+				statResult.DirSize,
+				statResult.FileNum,
+				statResult.FileLines,
+
+				diffResult.FileChanged,
+				diffResult.InsertLines,
+				diffResult.DeleteLines,
+
+				judgerResult.TestID,
+			)
+			if err != nil {
+				_ = tx.Rollback()
+				return
+			}
+		} else {
+			_ = tx.Rollback()
+			return
+		}
 	}
 	_ = tx.Commit()
 	logging.Info("UpdateTestCaseRunResults() commit trans action successfully.")
 
-	if is_ac {
+	if isAc {
 		// update question submit count
 		_, err = db.Exec(`UPDATE oj_question SET question_test_ac_num=question_test_ac_num+1 WHERE question_id=?;`, judgerResult.QuestionID)
 		if err != nil {
@@ -398,17 +469,17 @@ func UpdateTestCaseRunResults(judgerResult judger.TestResult, statResult utils.S
 
 func GetSubmitDetail(testID uint32) SubmitDetail {
 	var result = SubmitDetail{}
-	var save_dir string
+	var saveDir string
 	err := db.QueryRow("SELECT compile_result, extra_result, save_dir FROM oj_test_run WHERE test_id=?;", testID).Scan(
 		&result.Compile,
 		&result.Extra,
-		&save_dir,
+		&saveDir,
 	)
 	if err != nil {
 		logging.Info(err)
 		return result
 	}
-	files, err := ioutil.ReadDir(save_dir)
+	files, err := os.ReadDir(saveDir)
 	if err != nil {
 		logging.Info(err)
 		return result
@@ -416,14 +487,14 @@ func GetSubmitDetail(testID uint32) SubmitDetail {
 	for _, file := range files {
 		var info FileInfo
 		info.Name = file.Name()
-		path := path.Join(save_dir, info.Name)
+		path := path.Join(saveDir, info.Name)
 		// read file
-		content_bytes, err := ioutil.ReadFile(path)
+		contentBytes, err := os.ReadFile(path)
 		if err != nil {
 			logging.Info(err)
 			return result
 		}
-		info.Content = string(content_bytes)
+		info.Content = string(contentBytes)
 		if lint, ok := judger.ExtLint[filepath.Ext(info.Name)]; !ok {
 			info.Lint = ""
 		} else {

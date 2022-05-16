@@ -11,12 +11,12 @@ import (
 )
 
 func GetCourseNameHandler(c *gin.Context) {
-	courseid_str := c.Query("courseid")
-	if courseid_str == "" {
+	courseIDStr := c.Query("courseid")
+	if courseIDStr == "" {
 		ErrorResponse(c, ERROR, "there's not Course ID in query params.")
 		return
 	}
-	courseID, err := strconv.ParseUint(courseid_str, 10, 32)
+	courseID, err := strconv.ParseUint(courseIDStr, 10, 32)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
@@ -71,9 +71,9 @@ func CreateCourseHandler(c *gin.Context) {
 func FetchUserCoursesHandler(c *gin.Context) {
 	data := make(map[string]interface{})
 	code := SUCCESS
-	userid_str := c.Query("id")
+	userIDStr := c.Query("id")
 	data["result"] = []database.Course{}
-	if userid_str == "" {
+	if userIDStr == "" {
 		code = INVALID_PARAMS
 		data["err"] = "invalid parameters"
 		c.JSON(http.StatusOK, gin.H{
@@ -83,7 +83,7 @@ func FetchUserCoursesHandler(c *gin.Context) {
 		})
 		return
 	}
-	userID, err := strconv.ParseUint(userid_str, 10, 32)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
 		code = INVALID_PARAMS
 		data["err"] = err.Error()

@@ -1,8 +1,9 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -60,7 +61,7 @@ type GitLabResponse struct {
 
 func GitLabCallBackHandler(c *gin.Context) {
 	code := c.Query("code")
-	token, err := OauthConfig.Exchange(oauth2.NoContext, code)
+	token, err := OauthConfig.Exchange(context.Background(), code)
 	if err != nil {
 		logging.Error("Code exchange failed with err: ", err)
 		apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
@@ -74,7 +75,12 @@ func GitLabCallBackHandler(c *gin.Context) {
 		return
 	}
 	defer response.Body.Close()
-	contents, err := ioutil.ReadAll(response.Body)
+	contents, err := io.ReadAll(response.Body)
+	if err != nil {
+		logging.Error(err.Error())
+		apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
+		return
+	}
 	content := string(contents)
 	// var Userinfo map[string]interface{}
 	var userinfo GitLabResponse
@@ -94,17 +100,17 @@ func GitLabCallBackHandler(c *gin.Context) {
 		return
 	}
 
-	user_id_str := userinfo.Identities[0].UID
-	user_id_int64, err := strconv.ParseUint(user_id_str, 10, 32)
+	userIDStr := userinfo.Identities[0].UID
+	userIDInt64, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
 		logging.Error("Error when parsing gitlab callback contents: ", err)
 		apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
 		return
 	}
-	user_id := uint32(user_id_int64)
-	user_name := userinfo.UserName
+	userID := uint32(userIDInt64)
+	userName := userinfo.UserName
 	validator := validator.New()
-	loginInfo := login{user_name, user_id_str}
+	loginInfo := login{userName, userIDStr}
 	err = validator.Struct(&loginInfo)
 	if err != nil {
 		logging.Error(err)
@@ -112,23 +118,23 @@ func GitLabCallBackHandler(c *gin.Context) {
 		return
 	}
 	// confirm user authority
-	var user_type_tmp uint8 = database.UserStudent
-	if isAdmin(user_id_str) {
-		user_type_tmp = database.UserAdmin
+	var userTypeTmp uint8 = database.UserStudent
+	if isAdmin(userIDStr) {
+		userTypeTmp = database.UserAdmin
 	}
 	newUser := database.CreateUser{
-		ID:             user_id,
+		ID:             userID,
 		UserName:       userinfo.UserName,
 		RealName:       userinfo.RealName,
 		Email:          userinfo.Email,
 		GitID:          userinfo.ID,
 		LastLoginTime:  time.Now(),
-		Type:           user_type_tmp, // lowest authority, UserStudent
+		Type:           userTypeTmp, // lowest authority, UserStudent
 		GitAccessToken: token.AccessToken,
 	}
-	if database.CheckUserExist(user_id_str) {
-		err = database.UpdateUserInfo(user_id_str, newUser)
-		// err = database.UpdateUserAccessToken(user_id_str, token.AccessToken)
+	if database.CheckUserExist(userIDStr) {
+		err = database.UpdateUserInfo(userIDStr, newUser)
+		// err = database.UpdateUserAccessToken(userIDStr, token.AccessToken)
 		if err != nil {
 			logging.Error("error in update user info: ", err)
 			apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
@@ -143,24 +149,22 @@ func GitLabCallBackHandler(c *gin.Context) {
 		}
 	}
 
-	retcode := apis.INVALID_PARAMS
 	query := url.Values{}
-	user_type, err := database.GetUserType(user_id_str)
+	userType, err := database.GetUserType(userIDStr)
 	if err != nil {
 		logging.Error(err)
 		apis.ErrorResponse(c, apis.INVALID_PARAMS, err.Error())
 		return
 	}
-	rettoken, err := jwt.TokenGenerator(user_id_str, user_name)
+	rettoken, err := jwt.TokenGenerator(userIDStr, userName)
 	if err != nil {
-		retcode = apis.ERROR_AUTH_TOKEN
+		query.Add("code", strconv.Itoa(apis.ERROR_AUTH_TOKEN))
 	} else {
-		retcode = apis.SUCCESS
+		query.Add("code", strconv.Itoa(apis.SUCCESS))
 		query.Add("token", rettoken)
-		query.Add("username", user_name)
-		query.Add("permission", strconv.FormatUint(uint64(user_type), 10))
-		query.Add("userid", user_id_str)
+		query.Add("username", userName)
+		query.Add("permission", strconv.FormatUint(uint64(userType), 10))
+		query.Add("userid", userIDStr)
 	}
-	query.Add("code", strconv.Itoa(retcode))
-	c.Redirect(http.StatusTemporaryRedirect, setting.FrontEndBaseUrl+"/login?"+query.Encode())
+	c.Redirect(http.StatusTemporaryRedirect, setting.FrontEndBaseURL+"/login?"+query.Encode())
 }

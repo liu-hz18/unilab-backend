@@ -39,7 +39,7 @@ func CreateAssignmentHandler(c *gin.Context) {
 		ErrorResponse(c, INVALID_PARAMS, "参数错误：截止时间 应该在 当前时间 之后。")
 		return
 	}
-	if len(form.QuestionIDs) <= 0 {
+	if len(form.QuestionIDs) == 0 {
 		ErrorResponse(c, INVALID_PARAMS, "参数错误：发布作业时请至少包含一个题目。")
 		return
 	}
@@ -58,12 +58,12 @@ func CreateAssignmentHandler(c *gin.Context) {
 }
 
 func GetAssignmentsInfoHandler(c *gin.Context) {
-	courseid_str := c.Query("courseid")
-	if courseid_str == "" {
+	courseIDStr := c.Query("courseid")
+	if courseIDStr == "" {
 		ErrorResponse(c, ERROR, "there's not Course ID in query params.")
 		return
 	}
-	courseID, err := utils.StringToUint32(courseid_str)
+	courseID, err := utils.StringToUint32(courseIDStr)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return

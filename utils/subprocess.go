@@ -85,7 +85,7 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 		linecounter := 0
 		for scanner.Scan() && linecounter < 50 {
 			outContent += scanner.Text() + "\n"
-			linecounter += 1
+			linecounter++
 		}
 	}
 	scanner = bufio.NewScanner(stderr)
@@ -99,7 +99,7 @@ func Subprocess(rlimit string, timeout int, executable string, pwd string, args 
 		linecounter := 0
 		for scanner.Scan() && linecounter < 50 {
 			errContent += scanner.Text() + "\n"
-			linecounter += 1
+			linecounter++
 		}
 	}
 	_stdout := strings.Trim(outContent, " \n")

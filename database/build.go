@@ -7,15 +7,13 @@ import (
 	"time"
 	"unilab-backend/logging"
 	"unilab-backend/setting"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 var db *sql.DB
 
 func InitDB() {
 	var err error
-	db, err = sql.Open(setting.DBType, fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8&parseTime=true&loc=Local",
+	db, err = sql.Open(setting.DBType, fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
 		setting.DBUser,
 		setting.DBPassword,
 		setting.DBHost,
@@ -25,9 +23,10 @@ func InitDB() {
 		logging.Fatal(err)
 		return
 	}
+	// setup a MySQL connection pool
 	db.SetConnMaxLifetime(time.Minute * 3)
-	db.SetMaxIdleConns(10)
-	db.SetMaxOpenConns(100)
+	db.SetMaxIdleConns(16)
+	db.SetMaxOpenConns(128)
 	// verify connection
 	if err = db.Ping(); err != nil {
 		logging.Fatal(err)
@@ -43,182 +42,6 @@ func InitDB() {
 	// 动态高频查询信息, 和评测相关
 	// test-run table: user, file, question, course
 	// user log
-
-	// create user table
-	// user_type: [student, teacher, admin]
-	// clearTable("oj_user")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_user(
-	// 	user_id INT(10) UNSIGNED NOT NULL PRIMARY KEY,
-	// 	user_name VARCHAR(16) NOT NULL DEFAULT 'unknown',
-	// 	user_real_name VARCHAR(50) NOT NULL DEFAULT 'unknown',
-	// 	user_email VARCHAR(255) NOT NULL DEFAULT '',
-	// 	user_git_tsinghua_id INT UNSIGNED NOT NULL DEFAULT 0,
-	// 	user_last_login_time DATETIME NOT NULL DEFAULT NOW(),
-	// 	user_type TINYINT UNSIGNED NOT NULL,
-	// 	user_signup_time DATETIME NOT NULL DEFAULT NOW(),
-	// 	user_token VARCHAR(255) NOT NULL DEFAULT ''
-	// ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create course table
-	// clearTable("oj_course")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_course(
-	// 	course_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	// 	course_name VARCHAR(32) NOT NULL,
-	// 	course_teacher VARCHAR(32) NOT NULL,
-	// 	course_term VARCHAR(64) NOT NULL,
-	// 	course_type TINYINT UNSIGNED NOT NULL
-	// ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create user <-> course joint table
-	// // user_type: admin, teacher, student
-	// clearTable("oj_user_course")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_user_course(
-	// 	course_id INT UNSIGNED NOT NULL,
-	// 	user_id INT(10) UNSIGNED NOT NULL,
-	// 	user_type VARCHAR(255) NOT NULL,
-	// 	CONSTRAINT c_oj_user_course_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_user_course_2 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create question table
-	// clearTable("oj_question")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_question(
-	// 	question_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	// 	question_name VARCHAR(255) NOT NULL,
-	// 	question_tag VARCHAR(255) NOT NULL,
-	// 	question_creator INT(10) UNSIGNED NOT NULL,
-	// 	question_score INT UNSIGNED NOT NULL,
-	// 	question_testcase_num INT UNSIGNED NOT NULL,
-	// 	question_memory_limit INT UNSIGNED NOT NULL,
-	// 	question_time_limit INT UNSIGNED NOT NULL,
-	// 	question_language VARCHAR(255) NOT NULL,
-	// 	question_compile_options VARCHAR(255) NOT NULL,
-	// 	question_test_total_num INT UNSIGNED NOT NULL DEFAULT 0,
-	// 	question_test_ac_num INT UNSIGNED NOT NULL DEFAULT 0,
-	// 	issue_time DATETIME NOT NULL,
-	// 	CONSTRAINT c_oj_question FOREIGN KEY (question_creator) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create homework table
-	// clearTable("oj_homework")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_homework(
-	// 	homework_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	// 	homework_name VARCHAR(255) NOT NULL,
-	// 	homework_begin_time DATETIME NOT NULL,
-	// 	homework_due_time DATETIME NOT NULL,
-	// 	homework_description VARCHAR(255) default '',
-	// 	course_id INT UNSIGNED NOT NULL,
-	// 	CONSTRAINT c_oj_homework_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create question <-> homework table
-	// clearTable("oj_question_homework")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_question_homework(
-	// 	question_id INT UNSIGNED NOT NULL,
-	// 	homework_id INT UNSIGNED NOT NULL,
-	// 	CONSTRAINT c_oj_question_homework_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_question_homework_2 FOREIGN KEY (homework_id) REFERENCES oj_homework(homework_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create question <-> course table
-	// clearTable("oj_question_course")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_question_course(
-	// 	question_id INT UNSIGNED NOT NULL,
-	// 	course_id INT UNSIGNED NOT NULL,
-	// 	CONSTRAINT c_oj_question_course_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_question_course_2 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create announcement table
-	// clearTable("oj_announcement")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_announcement(
-	// 	announcement_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	// 	announcement_title VARCHAR(255) NOT NULL,
-	// 	course_id INT UNSIGNED NOT NULL,
-	// 	issue_time DATETIME NOT NULL,
-	// 	CONSTRAINT c_oj_announcement_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create test-run table
-	// clearTable("oj_test_run")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_test_run(
-	// 	test_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	// 	test_launch_time DATETIME NOT NULL,
-
-	// 	course_id INT UNSIGNED NOT NULL,
-	// 	question_id INT UNSIGNED NOT NULL,
-	// 	user_id INT(10) UNSIGNED NOT NULL,
-
-	// 	language VARCHAR(255) NOT NULL,
-	// 	save_dir VARCHAR(255) NOT NULL,
-	// 	compile_result VARCHAR(1024) NOT NULL DEFAULT '',
-	// 	CONSTRAINT c_oj_test_run_1 FOREIGN KEY (course_id) REFERENCES oj_course(course_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_test_run_2 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_test_run_3 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// // create testcase-run table
-	// clearTable("oj_testcase_run")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_testcase_run(
-	// 	testcase_run_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	// 	testcase_rank   INT UNSIGNED NOT NULL,
-	// 	testcase_run_state VARCHAR(255) NOT NULL DEFAULT 'Pending',
-	// 	testcase_run_time_elapsed INT UNSIGNED NOT NULL DEFAULT 0,
-	// 	testcase_run_memory_usage INT UNSIGNED NOT NULL DEFAULT 0,
-	// 	test_id INT UNSIGNED NOT NULL,
-	// 	CONSTRAINT c_oj_testcase_run_1 FOREIGN KEY (test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// create question <-> user table
-	// clearTable("oj_question_user")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS oj_question_user(
-	// 	question_id INT UNSIGNED NOT NULL,
-	// 	user_id INT UNSIGNED NOT NULL,
-	// 	latest_score INT UNSIGNED NOT NULL,
-	// 	latest_test_id INT UNSIGNED NOT NULL,
-	// 	best_score INT UNSIGNED NOT NULL,
-	// 	best_test_id INT UNSIGNED NOT NULL,
-	// 	launch_times INT UNSIGNED NOT NULL DEFAULT 0,
-	// 	CONSTRAINT c_oj_question_user_1 FOREIGN KEY (question_id) REFERENCES oj_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_question_user_2 FOREIGN KEY (user_id) REFERENCES oj_user(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_question_user_3 FOREIGN KEY (latest_test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	// 	CONSTRAINT c_oj_question_user_4 FOREIGN KEY (best_test_id) REFERENCES oj_test_run(test_id) ON DELETE CASCADE ON UPDATE CASCADE
-	// ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`)
-	// if err != nil {
-	// 	logging.Fatal(err)
-	// 	return
-	// }
-	// logging.Info("test db successfully created!")
 }
 
 // just for test

@@ -45,15 +45,15 @@ func SubmitCodeHandler(c *gin.Context) {
 	}
 	// check submit codes
 	files := form.File["file"]
-	var contains_source = false
+	var containsSource = false
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
 		logging.Info("SubmitCodeHandler() receive file: ", filename)
 		if filename == judger.JudgerConfig[questionLanguage].NeedFile {
-			contains_source = true
+			containsSource = true
 		}
 	}
-	if !contains_source {
+	if !containsSource {
 		ErrorResponse(c, INVALID_PARAMS, fmt.Sprintf("Submit Files does not match contain %s.", judger.JudgerConfig[questionLanguage].NeedFile))
 		return
 	}
@@ -71,8 +71,8 @@ func SubmitCodeHandler(c *gin.Context) {
 		return
 	}
 	// save upload code to disk
-	submit_base_path := setting.UserRootDir + strconv.FormatUint(uint64(userid), 10) + "/" + strconv.FormatUint(uint64(postform.QuestionID), 10) + "_" + questionName + "/" + strconv.FormatUint(uint64(testID), 10) + "_test/"
-	err = os.MkdirAll(submit_base_path, 0777)
+	submitBasePath := setting.UserRootDir + strconv.FormatUint(uint64(userid), 10) + "/" + strconv.FormatUint(uint64(postform.QuestionID), 10) + "_" + questionName + "/" + strconv.FormatUint(uint64(testID), 10) + "_test/"
+	err = os.MkdirAll(submitBasePath, 0777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
@@ -82,7 +82,7 @@ func SubmitCodeHandler(c *gin.Context) {
 		if filename == "main.java" {
 			filename = "Main.java"
 		}
-		dst := submit_base_path + filename
+		dst := submitBasePath + filename
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
 			return
@@ -92,7 +92,7 @@ func SubmitCodeHandler(c *gin.Context) {
 	data["result"] = testID
 	code := SUCCESS
 	// run test
-	database.RunTest(testID, postform.QuestionID, submit_base_path, prevDir, postform.Language)
+	database.RunTest(testID, postform.QuestionID, submitBasePath, prevDir, postform.Language)
 	c.JSON(http.StatusOK, gin.H{
 		"code": code,
 		"msg":  MsgFlags[code],

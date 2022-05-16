@@ -81,10 +81,11 @@ char self_path[PATH_MAX + 1] = {};
 
 #include "run_program_conf.h"
 
+// name, key, arg, flags, doc, group
 argp_option run_program_argp_options[] =
-{
-	{"tl"                 , 'T', "TIME_LIMIT"  , 0, "Set time limit (in ms)"                            ,  1},
-	{"rtl"                , 'R', "TIME_LIMIT"  , 0, "Set real time limit (in ms)"                       ,  2},
+{	
+	{"tl"                 , 'T', "TIME_LIMIT"  , 0, "Set time limit (in ms)"                                ,  1},
+	{"rtl"                , 'R', "TIME_LIMIT"  , 0, "Set real time limit (in ms)"                           ,  2},
 	{"ml"                 , 'M', "MEMORY_LIMIT", 0, "Set memory limit (in kb)"                              ,  3},
 	{"ol"                 , 'O', "OUTPUT_LIMIT", 0, "Set output limit (in kb)"                              ,  4},
 	{"sl"                 , 'S', "STACK_LIMIT" , 0, "Set stack limit (in kb)"                               ,  5},
@@ -98,12 +99,13 @@ argp_option run_program_argp_options[] =
 	{"add-writable"       , 505, "FILE"        , 0, "Add a writable file"                                   , 11},
 	{"unsafe"             , 501, 0             , 0, "Don't check dangerous syscalls"                        , 12},
 	{"show-trace-details" , 502, 0             , 0, "Show trace details"                                    , 13},
-	{"allow-proc"         , 503, 0             , 0, "Allow fork, exec, vfork, nanosleep, clone... etc."                              , 14},
+	{"allow-proc"         , 503, 0             , 0, "Allow fork, exec, vfork, nanosleep, clone... etc."     , 14},
 	{"add-readable-raw"   , 504, "FILE"        , 0, "Add a readable (don't transform to its real path)"     , 15},
 	{"add-writable-raw"   , 506, "FILE"        , 0, "Add a writable (don't transform to its real path)"     , 15},
 	{"use-rss"            , 507, 0             , 0, "Use RSS as the memory value (use AS as default)"       , 16},
 	{0}
 };
+
 error_t run_program_argp_parse_opt (int key, char *arg, struct argp_state *state)
 {
 	RunProgramConfig *config = (RunProgramConfig*)state->input;
@@ -238,6 +240,10 @@ void parse_args(int argc, char **argv) {
 	} else {
 		run_program_config.program_name = realpath(run_program_config.argv[0]);
 	}
+
+	if (run_program_config.type == "compiler") {
+		run_program_config.userss = true;
+	}
 	
 	run_program_config.program_basename = basename(run_program_config.program_name);
 	if (run_program_config.work_path.empty()) {
@@ -290,6 +296,7 @@ void set_limit(int r, int rcur, int rmax = -1)  {
 		exit(55);
 	}
 }
+
 void run_child() {
 	set_limit(RLIMIT_CPU,
 		(int) ceil(run_program_config.time_limit / 1000.0),
@@ -380,6 +387,7 @@ int rp_children_pos(pid_t pid) {
 	}
 	return -1;
 }
+
 int rp_children_add(pid_t pid) {
 	if (n_rp_children == MaxNRPChildren) {
 		return -1;
@@ -389,6 +397,7 @@ int rp_children_add(pid_t pid) {
 	n_rp_children++;
 	return 0;
 }
+
 void rp_children_del(pid_t pid) {
 	int new_n = 0;
 	for (int i = 0; i < n_rp_children; i++) {
@@ -402,6 +411,7 @@ void rp_children_del(pid_t pid) {
 void stop_child(pid_t pid) {
 	kill(pid, SIGKILL);
 }
+
 void stop_all() {
 	kill(rp_timer_pid, SIGKILL);
 	for (int i = 0; i < n_rp_children; i++) {
@@ -493,7 +503,7 @@ RunResult trace_children() {
 			return RunResult(RS_MLE);
 		}
 
-		if (WIFEXITED(stat)) {
+		if (WIFEXITED(stat)) { // 进程正常结束
 			if (run_program_config.need_show_trace_details) {
 				fprintf(stderr, "exit     : %d\n", WEXITSTATUS(stat));
 			}
@@ -511,7 +521,7 @@ RunResult trace_children() {
 			}
 		}
 
-		if (WIFSIGNALED(stat)) {
+		if (WIFSIGNALED(stat)) { // 进程异常终止
 			if (run_program_config.need_show_trace_details) {
 				fprintf(stderr, "sig exit : %d\n", WTERMSIG(stat));
 			}
@@ -533,8 +543,8 @@ RunResult trace_children() {
 			}
 		}
 		
-		if (WIFSTOPPED(stat)) {
-			sig = WSTOPSIG(stat);
+		if (WIFSTOPPED(stat)) { // 进程处于暂停状态
+			sig = WSTOPSIG(stat); // 使得进程暂停的信号编号
 			
 			if (rp_children[p].mode == -1) {
 				if ((p == 0 && sig == SIGTRAP) || (p != 0 && sig == SIGSTOP)) {

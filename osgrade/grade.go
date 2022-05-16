@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unilab-backend/apis"
 	"unilab-backend/database"
-	"unilab-backend/gitlab_api"
+	"unilab-backend/gitlabapi"
 	"unilab-backend/logging"
 
 	"github.com/gin-gonic/gin"
@@ -33,107 +33,106 @@ const RUSTSBI_FIRST_LINE_PREFIX = "[rustsbi] RustSBI version "
 var CHECK_FIRST_LINE_PATTERN = `python3 check/ch`
 var outputs []database.Output
 
-func add_to_outputs(cur_output_lines []string, last_output_type string, cur_has_fail bool, cur_n_pass int, cur_n_fail int) {
-	raw_text := strings.Join(cur_output_lines, "\n")
-	var has_compile_failed bool
-	var compile_failure_message string
-	if COMPILE_FAILED_PATTERN.FindAllString(raw_text, -1) != nil {
-		has_compile_failed = true
+func addToOutputs(curOutputLines []string, lastOutputType string, curHasFail bool, curPassNum int, curFailNum int) {
+	rawText := strings.Join(curOutputLines, "\n")
+	var compileFailureMessage string
+	hasCompileFailed := COMPILE_FAILED_PATTERN.FindAllString(rawText, -1) != nil
+	if !hasCompileFailed {
+		compileFailureMessage = ""
 	} else {
-		has_compile_failed = false
+		compileFailureMessage = COMPILE_FAILED_PATTERN.FindAllString(rawText, -1)[0]
 	}
-	if has_compile_failed == false {
-		compile_failure_message = ""
-	} else {
-		compile_failure_message = COMPILE_FAILED_PATTERN.FindAllString(raw_text, -1)[0]
-	}
-	// var alert_class string
-	// if last_output_type=="Check"{
+	// var alertClass string
+	// if lastOutputType=="Check"{
 	// 	if cur_has_fail {
-	// 		alert_class="danger"
+	// 		alertClass="danger"
 	// 	}else{
-	// 		alert_class="success"
+	// 		alertClass="success"
 	// 	}
-	// }else if last_output_type=="Compile" && has_compile_failed{
-	// 	alert_class="danger"
+	// }else if lastOutputType=="Compile" && hasCompileFailed {
+	// 	alertClass="danger"
 	// }else{
-	// 	alert_class="info"
+	// 	alertClass="info"
 	// }
 	var message string
-	if last_output_type == "Check" {
-		message = "Test Passed: " + strconv.Itoa(cur_n_pass) + " / " + strconv.Itoa(cur_n_pass+cur_n_fail)
-	} else if last_output_type == "Compile" && has_compile_failed {
-		message = compile_failure_message
-	} else {
+	switch {
+	case lastOutputType == "Check":
+		message = "Test Passed: " + strconv.Itoa(curPassNum) + " / " + strconv.Itoa(curPassNum+curFailNum)
+	case hasCompileFailed && lastOutputType == "Compile":
+		message = compileFailureMessage
+	default:
 		message = ""
 	}
 	outputs = append(outputs, database.Output{
 		Id:      len(outputs) + 1,
-		Type:    last_output_type,
+		Type:    lastOutputType,
 		Message: message,
-		Content: raw_text,
+		Content: rawText,
 	})
 }
 
-func Grade(ci_output string) ([]database.Test, []database.Output) {
-	lines := strings.Split(ci_output, "\n")
-	n_pass := 0
-	n_fail := 0
-	test_passed_n1 := 0
-	test_passed_n2 := 0
+func Grade(ciOutput string) ([]database.Test, []database.Output) {
+	lines := strings.Split(ciOutput, "\n")
+	nPass := 0
+	nFail := 0
+	testPassedN1 := 0
+	testPassedN2 := 0
 	// tests:=list.New()
 	tests := []database.Test{}
 
-	last_output_type := "CI Output"
-	cur_output_type := "CI Output"
+	lastOutputType := "CI Output"
+	var curOutputType string
 	outputs = []database.Output{}
-	cur_output_lines := []string{}
-	cur_has_fail := false
-	cur_n_pass := 0
-	cur_n_fail := 0
-	last_line := ""
+	curOutputLines := []string{}
+	curHasFailed := false
+	curPassNum := 0
+	curFailNum := 0
+	lastLine := ""
 
 	for _, line := range lines {
 		ischeck, _ := regexp.MatchString(CHECK_FIRST_LINE_PATTERN, line)
-		if strings.HasPrefix(line, RUSTSBI_FIRST_LINE_PREFIX) {
-			cur_output_type = "Run"
-		} else if ischeck {
-			cur_output_type = "Check"
-		} else if strings.HasPrefix(line, COMPILE_FIRST_LINE_PREFIX) {
-			cur_output_type = "Compile"
-		} else if strings.HasPrefix(last_line, TEST_PASSED_PREFIX) {
-			cur_output_type = "CI Output"
+		switch {
+		case strings.HasPrefix(line, RUSTSBI_FIRST_LINE_PREFIX):
+			curOutputType = "Run"
+		case ischeck:
+			curOutputType = "Check"
+		case strings.HasPrefix(line, COMPILE_FIRST_LINE_PREFIX):
+			curOutputType = "Compile"
+		case strings.HasPrefix(lastLine, TEST_PASSED_PREFIX):
+			curOutputType = "CI Output"
+		default:
+			curOutputType = "CI Output"
 		}
-		if cur_output_type != last_output_type {
-			add_to_outputs(cur_output_lines, last_output_type, cur_has_fail, cur_n_pass, cur_n_fail)
-			cur_output_lines = []string{}
-			cur_has_fail = false
-			cur_n_pass = 0
-			cur_n_fail = 0
+		if curOutputType != lastOutputType {
+			addToOutputs(curOutputLines, lastOutputType, curHasFailed, curPassNum, curFailNum)
+			curOutputLines = []string{}
+			curHasFailed = false
+			curPassNum = 0
+			curFailNum = 0
 		}
-		last_line = line
-		last_output_type = cur_output_type
-		cur_output_lines = append(cur_output_lines, line)
+		lastLine = line
+		lastOutputType = curOutputType
+		curOutputLines = append(curOutputLines, line)
 		if strings.HasPrefix(line, PASS_PREFIX) {
-			n_pass++
-			cur_n_pass++
+			nPass++
+			curPassNum++
 			tests = append(tests, database.Test{
-				Id:          n_pass + n_fail,
+				Id:          nPass + nFail,
 				Name:        line[len(PASS_PREFIX):],
 				Score:       1,
 				Total_score: 1,
 			})
 		}
 		if strings.HasPrefix(line, FAIL_PREFIX) {
-			n_fail++
-			cur_n_fail++
+			nFail++
+			curFailNum++
 			tests = append(tests, database.Test{
-				Id:          n_pass + n_fail,
+				Id:          nPass + nFail,
 				Name:        line[len(FAIL_PREFIX):],
 				Score:       0,
 				Total_score: 1,
 			})
-			cur_has_fail = true
+			curHasFailed = true
 		}
 		if strings.HasPrefix(line, TEST_PASSED_PREFIX) {
 			tmp := strings.Split(strings.Split(line, ": ")[1], "/")
@@ -142,11 +141,11 @@ func Grade(ci_output string) ([]database.Test, []database.Output) {
 			if err1 != nil || err2 != nil {
 				fmt.Println("error")
 			}
-			test_passed_n1 += val1
-			test_passed_n2 += val2
+			testPassedN1 += val1
+			testPassedN2 += val2
 		}
 	}
-	add_to_outputs(cur_output_lines, last_output_type, cur_has_fail, cur_n_pass, cur_n_fail)
+	addToOutputs(curOutputLines, lastOutputType, curHasFailed, curPassNum, curFailNum)
 	return tests, outputs
 }
 
@@ -161,7 +160,7 @@ func GetOsGradeHandler(c *gin.Context) {
 	logging.Info(id)
 	logging.Info("start grade")
 	// userId,_ := strconv.ParseUint(id, 10, 32)
-	gradeDetails, err := database.GetGradeDetailsById(id)
+	gradeDetails, err := database.GetGradeDetailsByID(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"test_status":  "FAIL",
@@ -178,8 +177,8 @@ func GetOsGradeHandler(c *gin.Context) {
 func GetOsBranchGradeHandler(c *gin.Context) {
 	id := c.Query("id")
 	branch := c.Query("branch")
-	userId, _ := strconv.ParseUint(id, 10, 32)
-	gradeRecord, _ := database.GetGradeDetailByBranch(uint32(userId), branch)
+	userID, _ := strconv.ParseUint(id, 10, 32)
+	gradeRecord, _ := database.GetGradeDetailByBranch(uint32(userID), branch)
 	c.JSON(http.StatusOK, gin.H{
 		"tests":   gradeRecord.Tests,
 		"outputs": gradeRecord.Outputs,
@@ -193,15 +192,20 @@ func FetchOsGrade(c *gin.Context) {
 		apis.ErrorResponse(c, apis.ERROR, err.Error())
 		return
 	}
-	user_git_tsinghua_id, err := database.GetUserGitTsingHuaId(id)
+	userGitTsinghuaID, err := database.GetUserGitTsinghuaID(id)
 	if err != nil {
 		apis.ErrorResponse(c, apis.ERROR, err.Error())
 		return
 	}
-	traces := gitlab_api.Get_project_traces("labs-"+id, id, accessToken)
-	userId, _ := strconv.ParseUint(user_git_tsinghua_id, 10, 32)
+	traces := gitlabapi.GetProjectTraces("labs-"+id, id, accessToken)
+	userID, _ := strconv.ParseUint(userGitTsinghuaID, 10, 32)
 	for trace := range traces {
 		tests, outputs := Grade(traces[trace])
-		database.CreateGradeRecord(uint32(userId), trace, tests, outputs, "passed")
+		err := database.CreateGradeRecord(uint32(userID), trace, tests, outputs, "passed")
+		if err != nil {
+			apis.ErrorResponse(c, apis.ERROR, err.Error())
+			return
+		}
 	}
+	// need response ?
 }

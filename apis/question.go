@@ -37,25 +37,25 @@ func CreateQuestionHandler(c *gin.Context) {
 	}
 	// get testcase file
 	testcase := form.File["testcase"]
-	if len(testcase) <= 0 || len(testcase)%2 != 0 {
+	if len(testcase) == 0 || len(testcase)%2 != 0 {
 		ErrorResponse(c, INVALID_PARAMS, "Test Cases Should be MORE than ONE PAIR of (*.in & *.ans) files!")
 		return
 	}
 	var testCaseNum uint32 = uint32(len(testcase) / 2)
 	// check testcase postfix
 	for i := 1; i <= int(testCaseNum); i++ {
-		var valid_in bool = false
-		var valid_ans bool = false
+		var validIn = false
+		var validAns = false
 		for _, file := range testcase {
 			filename := filepath.Base(file.Filename)
-			if !valid_in && filename == fmt.Sprintf("%d.in", i) {
-				valid_in = true
+			if !validIn && filename == fmt.Sprintf("%d.in", i) {
+				validIn = true
 			}
-			if !valid_ans && filename == fmt.Sprintf("%d.ans", i) {
-				valid_ans = true
+			if !validAns && filename == fmt.Sprintf("%d.ans", i) {
+				validAns = true
 			}
 		}
-		if !valid_in || !valid_ans {
+		if !validIn || !validAns {
 			ErrorResponse(c, INVALID_PARAMS, "Test Cases Should be MORE than ONE PAIR of (*.in & *.ans) files!")
 			return
 		}
@@ -66,15 +66,17 @@ func CreateQuestionHandler(c *gin.Context) {
 		ErrorResponse(c, INVALID_PARAMS, "Language ("+postform.Language+") Not Supported.")
 		return
 	}
+	// replace blank in question title to '-'
+	postform.Title = strings.ReplaceAll(postform.Title, " ", "-")
 	// insert into database
-	question_id, err := database.CreateQuestion(postform, c.MustGet("user_id").(uint32), testCaseNum)
+	questionID, err := database.CreateQuestion(postform, c.MustGet("user_id").(uint32), testCaseNum)
 	if err != nil {
 		ErrorResponse(c, ERROR, err.Error())
 		return
 	}
 	// save file to disk
-	question_base_path := setting.QuestionRootDir + strconv.FormatUint(uint64(question_id), 10) + "_" + postform.Title + "/"
-	err = os.MkdirAll(question_base_path, 0777)
+	questionBasePath := setting.QuestionRootDir + strconv.FormatUint(uint64(questionID), 10) + "_" + postform.Title + "/"
+	err = os.MkdirAll(questionBasePath, 0777)
 	if err != nil {
 		ErrorResponse(c, INVALID_PARAMS, err.Error())
 		return
@@ -84,10 +86,10 @@ func CreateQuestionHandler(c *gin.Context) {
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
 		logging.Info("receive file: ", filename)
-		dst := question_base_path + "description.md"
+		dst := questionBasePath + "description.md"
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
-			os.RemoveAll(question_base_path)
+			os.RemoveAll(questionBasePath)
 			return
 		}
 	}
@@ -95,20 +97,20 @@ func CreateQuestionHandler(c *gin.Context) {
 	for _, file := range appendix {
 		filename := filepath.Base(file.Filename)
 		logging.Info("receive file: ", filename)
-		dst := question_base_path + "appendix.zip"
+		dst := questionBasePath + "appendix.zip"
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
-			os.RemoveAll(question_base_path)
+			os.RemoveAll(questionBasePath)
 			return
 		}
 	}
 	for _, file := range testcase {
 		filename := filepath.Base(file.Filename)
 		logging.Info("receive file: ", filename)
-		dst := question_base_path + filename
+		dst := questionBasePath + filename
 		if err := c.SaveUploadedFile(file, dst); err != nil {
 			ErrorResponse(c, ERROR, err.Error())
-			os.RemoveAll(question_base_path)
+			os.RemoveAll(questionBasePath)
 			return
 		}
 	}

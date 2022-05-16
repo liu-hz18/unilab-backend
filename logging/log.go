@@ -73,10 +73,10 @@ func DPanicf(template string, args ...interface{}) {
 func GetWriter(filename string) io.Writer {
 	// 生成rotatelogs
 	hook, err := rotatelogs.New(
-		strings.Replace(filename, ".log", "", -1)+"-%Y%m%d.log", // 实际生成的文件名 filename-YYmmdd.log
-		rotatelogs.WithLinkName(filename),                       // filename.log是指向最新日志的链接
-		rotatelogs.WithMaxAge(time.Hour*24*7),                   // 仅保存7天内的日志
-		rotatelogs.WithRotationTime(time.Hour*24),               // 每一天(24:00)分割一次日志
+		strings.ReplaceAll(filename, ".log", "")+"-%Y%m%d.log", // 实际生成的文件名 filename-YYmmdd.log
+		rotatelogs.WithLinkName(filename),                      // filename.log是指向最新日志的链接
+		rotatelogs.WithMaxAge(time.Hour*24*7),                  // 仅保存7天内的日志
+		rotatelogs.WithRotationTime(time.Hour*24),              // 每一天(24:00)分割一次日志
 	)
 	if err != nil {
 		panic(err)

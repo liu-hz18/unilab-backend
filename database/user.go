@@ -97,21 +97,21 @@ func UpdateUserInfo(userid string, info CreateUser) error {
 }
 
 func GetUserAccessToken(userid string) (string, error) {
-	var access_token string
-	err := db.QueryRow("SELECT user_token from oj_user where user_id=?;", userid).Scan(&access_token)
-	// logging.Info("GetUserAccessToken()", userid, access_token)
-	return access_token, err
+	var accessToken string
+	err := db.QueryRow("SELECT user_token from oj_user where user_id=?;", userid).Scan(&accessToken)
+	// logging.Info("GetUserAccessToken()", userid, accessToken)
+	return accessToken, err
 }
 
-func GetUserGitTsingHuaId(userid string) (string, error) {
-	var user_git_tsinghua_id string
-	err := db.QueryRow("SELECT user_git_tsinghua_id from oj_user where user_id=?;", userid).Scan(&user_git_tsinghua_id)
-	return user_git_tsinghua_id, err
+func GetUserGitTsinghuaID(userid string) (string, error) {
+	var userGitTsinghuaID string
+	err := db.QueryRow("SELECT user_git_tsinghua_id from oj_user where user_id=?;", userid).Scan(&userGitTsinghuaID)
+	return userGitTsinghuaID, err
 }
 
 func CheckUserExist(userid string) bool {
-	var userid_db string
-	err := db.QueryRow("SELECT user_id from oj_user where user_id=?;", userid).Scan(&userid_db)
+	var useridDB string
+	err := db.QueryRow("SELECT user_id from oj_user where user_id=?;", userid).Scan(&useridDB)
 	if err != nil {
 		logging.Info("get user failed, err: ", err)
 		return false
@@ -120,27 +120,26 @@ func CheckUserExist(userid string) bool {
 }
 
 func GetUserType(userid string) (uint8, error) {
-	var user_type_db uint8
-	err := db.QueryRow("SELECT user_type from oj_user where user_id=?;", userid).Scan(&user_type_db)
-	// logging.Info("GetUserType()", userid, user_type_db)
-	return user_type_db, err
+	var userTypeDb uint8
+	err := db.QueryRow("SELECT user_type from oj_user where user_id=?;", userid).Scan(&userTypeDb)
+	return userTypeDb, err
 }
 
 func GetUserName(userid string) (string, error) {
-	var username string
-	err := db.QueryRow("SELECT user_name from oj_user where user_id=?;", userid).Scan(&username)
-	return username, err
+	var userName string
+	err := db.QueryRow("SELECT user_name from oj_user where user_id=?;", userid).Scan(&userName)
+	return userName, err
 }
 
 func GetUserNameType(userid string) (string, uint8, error) {
-	var username string
-	var user_type_db uint8
-	err := db.QueryRow("SELECT user_name, user_type from oj_user where user_id=?;", userid).Scan(&username, &user_type_db)
-	return username, user_type_db, err
+	var userName string
+	var userTypeDb uint8
+	err := db.QueryRow("SELECT user_name, user_type from oj_user where user_id=?;", userid).Scan(&userName, &userTypeDb)
+	return userName, userTypeDb, err
 }
 
 func GetAllUsersNameAndID() ([]UserInfo, error) {
-	userinfos := []UserInfo{}
+	userInfos := []UserInfo{}
 	res, err := db.Query("SELECT user_id, user_real_name FROM oj_user;")
 	if err != nil {
 		logging.Info(err)
@@ -154,13 +153,13 @@ func GetAllUsersNameAndID() ([]UserInfo, error) {
 			logging.Info(err)
 			return nil, err
 		}
-		userinfos = append(userinfos, info)
+		userInfos = append(userInfos, info)
 	}
-	return userinfos, nil
+	return userInfos, nil
 }
 
 func GetAllTeachersNameAndID() ([]UserInfo, error) {
-	userinfos := []UserInfo{}
+	userInfos := []UserInfo{}
 	res, err := db.Query("SELECT user_id, user_real_name FROM oj_user WHERE user_type>=?;", UserTeacher)
 	if err != nil {
 		logging.Info(err)
@@ -174,12 +173,12 @@ func GetAllTeachersNameAndID() ([]UserInfo, error) {
 			logging.Info(err)
 			return nil, err
 		}
-		userinfos = append(userinfos, info)
+		userInfos = append(userInfos, info)
 	}
-	return userinfos, nil
+	return userInfos, nil
 }
 
-func CreateUsersIfNotExists(userInfos []UserInfo, authority uint8, update_auth bool) error {
+func CreateUsersIfNotExists(userInfos []UserInfo, authority uint8, updateAuth bool) error {
 	// setup a transaction
 	tx, err := db.Begin()
 	if err != nil {
@@ -190,25 +189,25 @@ func CreateUsersIfNotExists(userInfos []UserInfo, authority uint8, update_auth b
 		return err
 	}
 	// insert new teacher if not existed
-	var insertSqlStr string
-	if update_auth {
-		insertSqlStr = "INSERT INTO oj_user (user_id, user_real_name, user_type) VALUES "
+	var insertSQLStr string
+	if updateAuth {
+		insertSQLStr = "INSERT INTO oj_user (user_id, user_real_name, user_type) VALUES "
 	} else {
-		insertSqlStr = "INSERT IGNORE INTO oj_user (user_id, user_real_name, user_type) VALUES "
+		insertSQLStr = "INSERT IGNORE INTO oj_user (user_id, user_real_name, user_type) VALUES "
 	}
-	for index, user_info := range userInfos {
+	for index, userInfo := range userInfos {
 		if index < len(userInfos)-1 {
-			insertSqlStr += fmt.Sprintf("(%d, '%s', %d),", user_info.ID, user_info.Name, authority)
+			insertSQLStr += fmt.Sprintf("(%d, '%s', %d),", userInfo.ID, userInfo.Name, authority)
 		} else {
-			insertSqlStr += fmt.Sprintf("(%d, '%s', %d)", user_info.ID, user_info.Name, authority)
+			insertSQLStr += fmt.Sprintf("(%d, '%s', %d)", userInfo.ID, userInfo.Name, authority)
 		}
 	}
-	if update_auth {
-		insertSqlStr += "ON DUPLICATE KEY UPDATE user_type=values(user_type);"
+	if updateAuth {
+		insertSQLStr += "ON DUPLICATE KEY UPDATE user_type=values(user_type);"
 	} else {
-		insertSqlStr += ";"
+		insertSQLStr += ";"
 	}
-	_, err = tx.Exec(insertSqlStr)
+	_, err = tx.Exec(insertSQLStr)
 	if err != nil {
 		_ = tx.Rollback()
 		logging.Info(err)

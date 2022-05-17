@@ -90,11 +90,15 @@ func initRouter() *gin.Engine {
 	router.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "hello World!")
 	})
-	// Routes
+
 	// system profiling, access https://lab.cs.tsinghua.edu.cn/unilab/api/debug/pprof/
 	// to see CPU profiling: go tool pprof -http=":8081" https://lab.cs.tsinghua.edu.cn/unilab/api/debug/pprof/profile
 	// to see MEM profiling: go tool pprof -http=":8081" https://lab.cs.tsinghua.edu.cn/unilab/api/debug/pprof/heap
+	// to see trace:         curl https://lab.cs.tsinghua.edu.cn/unilab/api/debug/pprof/trace -o trace.out
+	//                       go tool trace -http="localhost:8081" ./trace.out
 	pprof.Register(router)
+
+	// Routes
 	// see http status: https://pkg.go.dev/net/http#pkg-constants
 	router.GET("/login", auth.UserLoginHandler)
 	router.GET("/callback", auth.GitLabCallBackHandler)

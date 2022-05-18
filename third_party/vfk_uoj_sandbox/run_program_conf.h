@@ -164,8 +164,9 @@ inline bool is_writable_file(string name) {
 	if (name == "/") {
 		return writable_file_name_set.count("system_root");
 	}
-	return is_in_set_smart(name, writable_file_name_set) || is_in_set_smart(realpath(name), readable_file_name_set);
+	return is_in_set_smart(name, writable_file_name_set) || is_in_set_smart(realpath(name), writable_file_name_set);
 }
+
 inline bool is_readable_file(const string &name) {
 	if (is_writable_file(name)) {
 		return true;
@@ -175,6 +176,7 @@ inline bool is_readable_file(const string &name) {
 	}
 	return is_in_set_smart(name, readable_file_name_set) || is_in_set_smart(realpath(name), readable_file_name_set);
 }
+
 inline bool is_statable_file(const string &name) {
 	if (is_readable_file(name)) {
 		return true;
@@ -184,6 +186,7 @@ inline bool is_statable_file(const string &name) {
 	}
 	return is_in_set_smart(name, statable_file_name_set) || is_in_set_smart(realpath(name), statable_file_name_set);
 }
+
 inline bool is_soft_ban_file(const string &name) {
 	if (name == "/") {
 		return soft_ban_file_name_set.count("system_root");

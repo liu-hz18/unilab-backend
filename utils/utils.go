@@ -53,3 +53,27 @@ func ArrayContainsString(item string, arr []string) bool {
 	}
 	return false
 }
+
+func Min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+func Clap(num, low, high int) int {
+	if num < low {
+		return low
+	}
+	if num > high {
+		return high
+	}
+	return num
+}

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unilab-backend/apis"
 	"unilab-backend/database"
-	"unilab-backend/gitlab_api"
+	"unilab-backend/gitlabapi"
 
 	"github.com/gin-gonic/gin"
 )
@@ -86,12 +86,12 @@ func FetchCompilerGrade(c *gin.Context) {
 		apis.ErrorResponse(c, apis.ERROR, err.Error())
 		return
 	}
-	user_git_tsinghua_id, err := database.GetUserGitTsingHuaId(id)
+	user_git_tsinghua_id, err := database.GetUserGitTsinghuaID(id)
 	if err != nil {
 		apis.ErrorResponse(c, apis.ERROR, err.Error())
 		return
 	}
-	traces := gitlab_api.Get_project_traces("minidecaf-"+id, id, accessToken)
+	traces := gitlabapi.GetProjectTraces("minidecaf-"+id, id, accessToken)
 	// fmt.Println(traces)
 	// userId, _ := strconv.ParseUint(user_git_tsinghua_id, 10, 32)
 	for trace := range traces {

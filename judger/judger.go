@@ -288,7 +288,7 @@ func LaunchTest(cfg TestConfig) TestResult {
 		response = utils.Subprocess(
 			runtimeRlimits, timeOut, BackendRootDir+"prebuilt/uoj_run", tempDirName, // NOTE: work in current dir, not in tmp dir
 			fmt.Sprintf("--tl=%d", cfg.TimeLimit),
-			fmt.Sprintf("--rtl=%d", cfg.TimeLimit+1000),
+			fmt.Sprintf("--rtl=%d", cfg.TimeLimit*2),
 			fmt.Sprintf("--ml=%d", cfg.MemoryLimit),
 			fmt.Sprintf("--ol=%d", (64*1024)),
 			fmt.Sprintf("--sl=%d", (64*1024)),

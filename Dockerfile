@@ -6,7 +6,7 @@ ENV GOSUMDB='off'
 ENV TZ=Asia/Shanghai
 
 RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git tzdata build-essential
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git tzdata build-essential libseccomp-dev seccomp libseccomp2
 RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
 # 创建文件夹
 RUN mkdir /unilab-backend
@@ -20,8 +20,8 @@ ADD . /unilab-backend
 # 因为已经是在 /app下了，所以使用  ./
 RUN mkdir -p ./prebuilt
 RUN go build -ldflags="-s -w" -v -o main .
-RUN g++ ./third_party/vfk_uoj_sandbox/run_program.cpp -o ./prebuilt/uoj_run -O2 -Wfatal-errors -Wall -Wextra
-RUN g++ ./third_party/testlib/fcmp.cpp -o ./prebuilt/fcmp -O2 -Wfatal-errors -Wall -Wextra
+RUN g++ ./third_party/vfk_uoj_sandbox/run_program.cpp -o ./prebuilt/uoj_run -O2 --std=c++17 -lstdc++fs -lseccomp -pthread -Wfatal-errors -Wall -Wextra
+RUN g++ ./third_party/testlib/fcmp.cpp -o ./prebuilt/fcmp -O2 --std=c++17 -Wfatal-errors -Wall -Wextra
 RUN DEBIAN_FRONTEND=noninteractive apt-get remove -y git tzdata build-essential
 
 
@@ -32,8 +32,8 @@ ENV TZ=Asia/Shanghai
 # 换阿里源
 ARG CHANGE_SOURCE=true
 RUN if [ ${CHANGE_SOURCE} = true ]; then \
-    sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/' /etc/apt/sources.list && \
-    sed -i 's/security.ubuntu.com/mirrors.aliyun.com/' /etc/apt/sources.list \
+    sed -i 's/archive.ubuntu.com/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list && \
+    sed -i 's/security.ubuntu.com/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list \
 ;fi
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get clean && apt-get update -y && apt-get upgrade -y
@@ -42,7 +42,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates && update-
 RUN echo "hosts: files dns" > /etc/nsswitch.conf
 # judger dependencies and nodejs
 RUN DEBIAN_FRONTEND=noninteractive apt-get update -y
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata zip unzip wget curl bash bash-doc bash-completion build-essential gcc make g++ git python2.7 python3 openjdk-8-jdk openjdk-11-jdk
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata zip unzip wget curl bash bash-doc bash-completion build-essential gcc make g++ libseccomp-dev seccomp libseccomp2 git python2.7 python3 openjdk-8-jdk openjdk-11-jdk
 RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
 # enter bash
 RUN /bin/bash

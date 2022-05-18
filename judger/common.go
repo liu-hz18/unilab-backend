@@ -43,10 +43,10 @@ const NodeResourceLimiter = "ulimit -t 10 && ulimit -v 2097152 && ulimit -f 6553
 const CheckerResourceLimiter = "ulimit -t 6 && ulimit -v 262144 && ulimit -f 65536"
 
 // runtime
-const CRuntimeResourceLimiter = "ulimit -t 5 && ulimit -v 524288 && ulimit -f 65536"
-const PythonRuntimeResourceLimiter = "ulimit -t 5 && ulimit -v 524288 && ulimit -f 65536"
-const JavaRuntimeResourceLimiter = "ulimit -t 10 && ulimit -v 18874368 && ulimit -f 65536"
-const GoRuntimeResourceLimiter = "ulimit -t 10 && ulimit -v 1048576 && ulimit -f 65536"
+const CRuntimeResourceLimiter = "ulimit -t 8 && ulimit -v 524288 && ulimit -f 65536"
+const PythonRuntimeResourceLimiter = "ulimit -t 12 && ulimit -v 524288 && ulimit -f 65536"
+const JavaRuntimeResourceLimiter = "ulimit -t 16 && ulimit -v 18874368 && ulimit -f 65536"
+const GoRuntimeResourceLimiter = "ulimit -t 12 && ulimit -v 1048576 && ulimit -f 65536"
 
 type LanguageConfig struct {
 	Compile       string

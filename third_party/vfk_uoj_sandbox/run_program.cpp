@@ -171,6 +171,7 @@ error_t run_program_argp_parse_opt (int key, char *arg, struct argp_state *state
 			break;
 		case 507:
 			config->userss = true;
+			break;
 		case ARGP_KEY_ARG:
 			config->argv.push_back(arg);
 			for (int i = state->next; i < state->argc; i++) {
@@ -286,6 +287,10 @@ void parse_args(int argc, char **argv) {
 void set_limit(int r, int rcur, int rmax = -1)  {
 	if (rmax == -1)
 		rmax = rcur;
+	// struct rlimit {
+	// 	rlim_t    rlim_cur;    /* soft limit: current limit */
+	// 	rlim_t    rlim_max;    /* hard limit: maximum value for rlim_cur */
+	// };
 	struct rlimit l;
 	if (getrlimit(r, &l) == -1) {
 		exit(55);
@@ -314,6 +319,7 @@ void run_child() {
 			exit(12);
 		}
 	}
+
 	if (run_program_config.error_file_name != "stderr") {
 		if (run_program_config.error_file_name == "stdout") {
 			if (dup2(1, 2) == -1) {
@@ -420,7 +426,7 @@ void stop_all() {
 }
 
 RunResult trace_children() {
-	rp_timer_pid = fork();
+	rp_timer_pid = fork(); // pid < 0: error, pid == 0: this is child process, pid > 0: this is father process, son process is `pid`
 	if (rp_timer_pid == -1) {
 		stop_all();
 		return RunResult(RS_JGF);
@@ -443,6 +449,40 @@ RunResult trace_children() {
 		int sig = 0;
 		struct rusage ruse;
 		
+		// pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage)
+		// 挂起当前进程，等待指定的子进程状态改变
+		// pid: 要关注的子进程的pid, -1 means wait for ANY child process whose process group ID is equal to the absolute value of pid
+		// status: 子进程的返回状态. 
+		//   WIFEXITED(status): is non-zero if the child exited normally
+		//   WEXITSTATUS(status): can only be evaluated if WIFEXITED returned non-zero
+		//   WIFSIGNALED(status): returns true if the child process exited because of a signal which was not caught
+		//   WTERMSIG(status): returns the number of the signal that caused the child process to terminate.
+		//   WIFSTOPPED(status): returns true if the child process which caused the return is currently stopped; this is only possible if the call was done using WUNTRACED.
+		//   WSTOPSIG(status): returns the number of the signal which caused the child to stop. This macro can only be evaluated if WIFSTOPPED returned non-zero.
+		// options: 进程等待选项
+		//   WNOHANG: 立即返回
+		//   WUNTRACED: 等子进程状态发生变化后才返回
+		//   __WALL: Wait for all children, regardless of type
+		//   
+		// rusage: 死亡进程资源使用记录
+		//  struct rusage {
+		//  	struct timeval ru_utime; /* user time used */
+		// 	    struct timeval ru_stime; /* system time used */
+		// 		long   ru_maxrss;        /* maximum resident set size */
+		// 		long   ru_ixrss;         /* integral shared memory size */
+		// 		long   ru_idrss;         /* integral unshared data size */
+		// 		long   ru_isrss;         /* integral unshared stack size */
+		// 		long   ru_minflt;        /* page reclaims */
+		// 		long   ru_majflt;        /* page faults */
+		// 		long   ru_nswap;         /* swaps */
+		// 		long   ru_inblock;       /* block input operations */
+		// 		long   ru_oublock;       /* block output operations */
+		// 		long   ru_msgsnd;        /* messages sent */
+		// 		long   ru_msgrcv;        /* messages received */
+		// 		long   ru_nsignals;      /* signals received */
+		// 		long   ru_nvcsw;         /* voluntary context switches */
+		// 		long   ru_nivcsw;        /* involuntary context switches */
+		// };
 		pid_t pid = wait4(-1, &stat, __WALL, &ruse);
 		if (run_program_config.need_show_trace_details) {
 			// if (prev_pid != pid) {
@@ -453,6 +493,7 @@ RunResult trace_children() {
 		if (pid == rp_timer_pid) {
 			if (WIFEXITED(stat) || WIFSIGNALED(stat)) {
 				stop_all();
+				fprintf(stderr, "WIFEXITED(stat) || WIFSIGNALED(stat)\n");
 				return RunResult(RS_TLE);
 			}
 			continue;
@@ -495,6 +536,7 @@ RunResult trace_children() {
 		int usermem = run_program_config.userss ? userrss : useras;
 		if (usertim > run_program_config.time_limit) {
 			stop_all();
+			fprintf(stderr, "usertim > run_program_config.time_limit     : %d s\n", usertim);
 			return RunResult(RS_TLE);
 		}
 		if (usermem > run_program_config.memory_limit) {
@@ -529,6 +571,7 @@ RunResult trace_children() {
 				switch(WTERMSIG(stat)) {
 				case SIGXCPU: // nearly impossible
 					stop_all();
+					fprintf(stderr, "WTERMSIG(stat) == SIGXCPU\n");
 					return RunResult(RS_TLE);
 				case SIGXFSZ:
 					stop_all();
@@ -607,6 +650,7 @@ RunResult trace_children() {
 			switch(sig) {
 			case SIGXCPU:
 				stop_all();
+				fprintf(stderr, "WSTOPSIG(stat) == SIGXCPU\n");
 				return RunResult(RS_TLE);
 			case SIGXFSZ:
 				stop_all();
@@ -626,6 +670,7 @@ RunResult run_parent(pid_t pid) {
 	rp_children_add(pid);
 	return trace_children();
 }
+
 int main(int argc, char **argv) {
 	self_path[readlink("/proc/self/exe", self_path, PATH_MAX)] = '\0';
 	parse_args(argc, argv);

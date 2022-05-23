@@ -208,7 +208,7 @@ func FetchOsGrade(c *gin.Context) {
 		}
 	}
 	ID, _ := strconv.ParseUint(id, 10, 32)
-	gradeDetails, err := database.GetGradeDetailsByID(ID)
+	gradeDetails, err := database.GetGradeDetailsByID(uint32(ID))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"test_status":  "FAIL",

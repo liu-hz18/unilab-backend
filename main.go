@@ -104,6 +104,7 @@ func initRouter() *gin.Engine {
 	router.GET("/callback", auth.GitLabCallBackHandler)
 
 	router.GET("/Os/FetchGrade", osgrade.FetchOsGrade)
+	router.POST("/Os/Grade", osgrade.GetOsGradeHandler)
 	router.POST("/webhook/os", webhook.OsWebhookHandler)
 	studentApis := router.Group("/student")
 	studentApis.Use(middleware.RateLimitMiddleware(), middleware.JWTMiddleWare(), middleware.PriorityMiddleware(database.UserStudent))

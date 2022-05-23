@@ -207,5 +207,17 @@ func FetchOsGrade(c *gin.Context) {
 			return
 		}
 	}
+	gradeDetails, err := database.GetGradeDetailsByID(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"test_status":  "FAIL",
+			"gradeDetails": gradeDetails,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"test_status":  "SUCCESS",
+			"gradeDetails": gradeDetails,
+		})
+	}
 	// need response ?
 }

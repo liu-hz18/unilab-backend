@@ -101,7 +101,7 @@ func Grade(ciOutput string) ([]database.Test, []database.Output) {
 		case strings.HasPrefix(lastLine, TEST_PASSED_PREFIX):
 			curOutputType = "CI Output"
 		default:
-			curOutputType = "CI Output"
+			curOutputType = lastOutputType
 		}
 		if curOutputType != lastOutputType {
 			addToOutputs(curOutputLines, lastOutputType, curHasFailed, curPassNum, curFailNum)

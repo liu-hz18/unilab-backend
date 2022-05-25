@@ -93,11 +93,11 @@ func FetchCompilerGrade(c *gin.Context) {
 	}
 	traces := gitlabapi.GetProjectTraces("minidecaf-"+id, id, accessToken)
 	// fmt.Println(traces)
-	// userId, _ := strconv.ParseUint(user_git_tsinghua_id, 10, 32)
+	userId, _ := strconv.ParseUint(user_git_tsinghua_id, 10, 32)
 	for trace := range traces {
 		tests, _ := Grade(traces[trace])
 		fmt.Println(trace)
 		fmt.Println(tests)
-		// database.CreateGradeRecord(uint32(userId),trace,tests,outputs,"passed")
+		database.CreateGradeRecord(uint32(userId), trace, tests, outputs, "passed")
 	}
 }

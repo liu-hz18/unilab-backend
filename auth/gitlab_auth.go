@@ -15,7 +15,7 @@ import (
 	"unilab-backend/setting"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator"
+	"github.com/go-playground/validator/v10"
 	"golang.org/x/oauth2"
 )
 
